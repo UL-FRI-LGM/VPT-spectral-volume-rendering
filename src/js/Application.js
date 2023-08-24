@@ -12,6 +12,7 @@ import { RenderingContextDialog } from './dialogs/RenderingContextDialog/Renderi
 import { DialogConstructor } from './dialogs/DialogConstructor.js';
 
 import { RenderingContext } from './RenderingContext.js';
+import { WebGPURenderingContext } from './WebGPURenderingContext.js';
 
 import { PerspectiveCamera } from './PerspectiveCamera.js';
 
@@ -27,7 +28,8 @@ constructor() {
 
     this.binds = DOMUtils.bind(document.body);
 
-    this.renderingContext = new RenderingContext();
+    this.renderingContext = new WebGPURenderingContext(() => {
+    ////////////////////////////////////////////////////////////////
     this.binds.canvasContainer.appendChild(this.renderingContext.canvas);
 
     document.body.addEventListener('dragover', e => e.preventDefault());
@@ -86,6 +88,8 @@ constructor() {
     this._handleToneMapperChange();
 
     this.mainDialog.addEventListener('recordanimation', this._handleRecordAnimation);
+    ////////////////////////////////////////////////////////////////
+    }); // TODO: Remove
 }
 
 async _handleRecordAnimation(e) {
@@ -138,6 +142,8 @@ _handleRendererChange() {
 }
 
 _handleToneMapperChange() {
+    return; // TODO
+
     if (this.toneMapperDialog) {
         this.toneMapperDialog.remove();
     }

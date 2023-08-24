@@ -9,7 +9,7 @@
         {
             "input": "src",
             "output": "/",
-            "filter": "\\.(glsl)$",
+            "filter": "\\.(glsl|wgsl)$",
             "recursive": true,
             "parse": true
         },
@@ -32,8 +32,18 @@
             "mode": "json"
         },
         {
+            "input": "/wgsl/shaders",
+            "output": "build/shaders-wgsl.json",
+            "mode": "json"
+        },
+        {
             "input": "/glsl/mixins",
             "output": "build/mixins.json",
+            "mode": "json"
+        },
+        {
+            "input": "/wgsl/mixins",
+            "output": "build/mixins-wgsl.json",
             "mode": "json"
         }
     ]
