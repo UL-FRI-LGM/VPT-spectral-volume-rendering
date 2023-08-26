@@ -79,11 +79,11 @@ async initWebGPU() {
         layout: "auto",
         vertex: {
             module,
-            entryPoint: "main_vs"
+            entryPoint: "vertex_main"
         },
         fragment: {
             module,
-            entryPoint: "main_fs",
+            entryPoint: "fragment_main",
             targets: [{ format: this.canvasFormat }]
         }
     });
@@ -193,12 +193,12 @@ render() {
         entries: [
             {
                 binding: 0,
-                resource: this.sampler
+                resource: this.renderer.getTexture().createView()
             },
             {
                 binding: 1,
-                resource: this.renderer.getTexture().createView()
-            }
+                resource: this.sampler
+            },
         ]
     });
 

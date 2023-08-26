@@ -78,11 +78,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         layout: "auto",
         vertex: {
             module: generateModule,
-            entryPoint: "main_vs"
+            entryPoint: "vertex_main"
         },
         fragment: {
             module: generateModule,
-            entryPoint: "main_fs",
+            entryPoint: "fragment_main",
             targets: this._getFrameBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
     });
@@ -96,11 +96,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         layout: "auto",
         vertex: {
             module: integrateModule,
-            entryPoint: "main_vs"
+            entryPoint: "vertex_main"
         },
         fragment: {
             module: integrateModule,
-            entryPoint: "main_fs",
+            entryPoint: "fragment_main",
             targets: this._getAccumulationBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
     });
@@ -110,11 +110,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         layout: "auto",
         vertex: {
             module: renderModule,
-            entryPoint: "main_vs"
+            entryPoint: "vertex_main"
         },
         fragment: {
             module: renderModule,
-            entryPoint: "main_fs",
+            entryPoint: "fragment_main",
             targets: this._getRenderBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
     });
@@ -124,11 +124,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         layout: "auto",
         vertex: {
             module: resetModule,
-            entryPoint: "main_vs"
+            entryPoint: "vertex_main"
         },
         fragment: {
             module: resetModule,
-            entryPoint: "main_fs",
+            entryPoint: "fragment_main",
             targets: this._getAccumulationBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
     });
@@ -195,19 +195,19 @@ _generateFrame() {
         entries: [
             {
                 binding: 0,
-                resource: this._volume.getSampler()
-            },
-            {
-                binding: 1,
                 resource: this._volume.getTexture().createView()
             },
             {
+                binding: 1,
+                resource: this._volume.getSampler()
+            },
+            {
                 binding: 2,
-                resource: this._transferFunctionSampler
+                resource: this._transferFunctionTexture.createView()
             },
             {
                 binding: 3,
-                resource: this._transferFunctionTexture.createView()
+                resource: this._transferFunctionSampler
             },
             {
                 binding: 4,
@@ -280,19 +280,19 @@ _integrateFrame() {
         entries: [
             {
                 binding: 0,
-                resource: this._accumulationBuffer.getReadAttachments()[0].sampler
-            },
-            {
-                binding: 1,
                 resource: this._accumulationBuffer.getReadAttachments()[0].texture.createView()
             },
             {
+                binding: 1,
+                resource: this._accumulationBuffer.getReadAttachments()[0].sampler
+            },
+            {
                 binding: 2,
-                resource: this._frameBuffer.getAttachments()[0].sampler
+                resource: this._frameBuffer.getAttachments()[0].texture.createView()
             },
             {
                 binding: 3,
-                resource: this._frameBuffer.getAttachments()[0].texture.createView()
+                resource: this._frameBuffer.getAttachments()[0].sampler
             },
             {
                 binding: 4,
@@ -327,11 +327,11 @@ _renderFrame() {
         entries: [
             {
                 binding: 0,
-                resource: this._accumulationBuffer.getReadAttachments()[0].sampler
+                resource: this._accumulationBuffer.getReadAttachments()[0].texture.createView()
             },
             {
                 binding: 1,
-                resource: this._accumulationBuffer.getReadAttachments()[0].texture.createView()
+                resource: this._accumulationBuffer.getReadAttachments()[0].sampler
             }
         ]
     });
