@@ -120,7 +120,7 @@ fn main_vs(@builtin(vertex_index) vertexIndex : u32) -> VSOut  {
 
     var vsOut : VSOut;
     vsOut.position = vec4<f32>(position, 0.0, 1.0);
-    vsOut.uv = position * 0.5 + 0.5;
+    vsOut.uv = position * vec2<f32>(0.5, -0.5) + 0.5;
     return vsOut;
 }
 
@@ -154,7 +154,7 @@ fn main_vs(@builtin(vertex_index) vertexIndex : u32) -> VSOut  {
 
     var vsOut : VSOut;
     vsOut.position = vec4<f32>(position, 0.0, 1.0);
-    vsOut.uv = position * 0.5 + 0.5;
+    vsOut.uv = position * vec2<f32>(0.5, -0.5) + 0.5;
     return vsOut;
 }
 
