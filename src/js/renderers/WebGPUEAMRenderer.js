@@ -183,8 +183,6 @@ _generateFrame() {
         this.extinction
     ]));
 
-    device.queue.writeBuffer(this._integrateUniformBuffer, 0, new Float32Array([1.0 / this._frameNumber]));
-
     const bindGroup = device.createBindGroup({
         layout: this._generatePipeline.getBindGroupLayout(0),
         entries: [

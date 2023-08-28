@@ -3,7 +3,7 @@
 import { WebGPUEAMRenderer } from './WebGPUEAMRenderer.js';
 // import { WebGPULAORenderer } from './WebGPULAORenderer.js';
 // import { WebGPUMCSRenderer } from './WebGPUMCSRenderer.js';
-// import { WebGPUMCMRenderer } from './WebGPUMCMRenderer.js';
+import { WebGPUMCMRenderer } from './WebGPUMCMRenderer.js';
 // import { WebGPUDOSRenderer } from './WebGPUDOSRenderer.js';
 // import { WebGPUDepthRenderer } from './WebGPUDepthRenderer.js';
 
@@ -14,7 +14,7 @@ export function WebGPURendererFactory(which) {
         case 'eam': return WebGPUEAMRenderer;
         // case 'lao': return WebGPULAORenderer;
         // case 'mcs': return WebGPUMCSRenderer;
-        // case 'mcm': return WebGPUMCMRenderer;
+        case 'mcm': return WebGPUMCMRenderer;
         // case 'dos': return WebGPUDOSRenderer;
         // case 'depth': return WebGPUDepthRenderer;
 
