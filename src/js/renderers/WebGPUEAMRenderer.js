@@ -1,6 +1,6 @@
 import { mat4 } from '../../lib/gl-matrix-module.js';
 
-import { WebGL } from '../WebGL.js';
+import { WebGPU } from '../WebGPU.js';
 import { WebGPUAbstractRenderer } from './WebGPUAbstractRenderer.js';
 
 import { PerspectiveCamera } from '../PerspectiveCamera.js';
@@ -61,13 +61,8 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         }
     });
 
-    // this._programs = WebGL.buildPrograms(this._gl, SHADERS.renderers.EAM, MIXINS);
+    const modules = WebGPU.buildShaderModules(device, SHADERS.renderers.EAM, MIXINS);
     this._frameNumber = 0;
-
-    const generateModule = device.createShaderModule({ code: SHADERS.renderers.EAM.generate });
-    const integrateModule = device.createShaderModule({ code: SHADERS.renderers.EAM.integrate });
-    const renderModule = device.createShaderModule({ code: SHADERS.renderers.EAM.render });
-    const resetModule = device.createShaderModule({ code: SHADERS.renderers.EAM.reset });
 
     this._generateUniformBuffer = device.createBuffer({
         size: 80,
@@ -77,11 +72,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         label: "WebGPUEAMRenderer generate pipeline",
         layout: "auto",
         vertex: {
-            module: generateModule,
+            module: modules.generate,
             entryPoint: "vertex_main"
         },
         fragment: {
-            module: generateModule,
+            module: modules.generate,
             entryPoint: "fragment_main",
             targets: this._getFrameBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
@@ -95,11 +90,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         label: "WebGPUEAMRenderer integrate pipeline",
         layout: "auto",
         vertex: {
-            module: integrateModule,
+            module: modules.integrate,
             entryPoint: "vertex_main"
         },
         fragment: {
-            module: integrateModule,
+            module: modules.integrate,
             entryPoint: "fragment_main",
             targets: this._getAccumulationBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
@@ -109,11 +104,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         label: "WebGPUEAMRenderer render pipeline",
         layout: "auto",
         vertex: {
-            module: renderModule,
+            module: modules.render,
             entryPoint: "vertex_main"
         },
         fragment: {
-            module: renderModule,
+            module: modules.render,
             entryPoint: "fragment_main",
             targets: this._getRenderBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }
@@ -123,11 +118,11 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
         label: "WebGPUEAMRenderer reset pipeline",
         layout: "auto",
         vertex: {
-            module: resetModule,
+            module: modules.reset,
             entryPoint: "vertex_main"
         },
         fragment: {
-            module: resetModule,
+            module: modules.reset,
             entryPoint: "fragment_main",
             targets: this._getAccumulationBufferSpec().map(s => ({ format: s.textureDescriptor.format }))
         }

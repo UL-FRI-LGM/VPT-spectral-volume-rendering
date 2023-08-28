@@ -9,7 +9,7 @@ struct VertexOut {
 };
 
 struct Uniforms {
-    mvpInverseMatrix: mat4x4<f32>,
+    mvpInverseMatrix: mat4x4f,
     stepSize: f32,
     offset: f32,
     extinction: f32
@@ -27,59 +27,50 @@ const vertices = array<vec2f, 3>(
     vec2f(-1.0,  3.0)
 );
 
+#include <unproject>
+
 @vertex
 fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
-    var vertex: vec2f = vertices[vertexIndex];
+    let vertex: vec2f = vertices[vertexIndex];
 
-    // TODO: Link unproject
-    var nearPosition = vec4f(vertex, -1.0, 1.0);
-    var farPosition = vec4f(vertex, 1.0, 1.0);
-    var fromDirty: vec4f = uniforms.mvpInverseMatrix * nearPosition;
-    var toDirty: vec4f = uniforms.mvpInverseMatrix * farPosition;
+    var rayFrom: vec3f;
+    var rayTo: vec3f;
+    unproject(vertex, uniforms.mvpInverseMatrix, &rayFrom, &rayTo);
 
     var vertexOut : VertexOut;
     vertexOut.position = vec4f(vertex, 0.0, 1.0);
-    vertexOut.rayFrom = fromDirty.xyz / fromDirty.w;
-    vertexOut.rayTo = toDirty.xyz / toDirty.w;
+    vertexOut.rayFrom = rayFrom;
+    vertexOut.rayTo = rayTo;
     return vertexOut;
 }
 
-// TODO: Link intersectCube
-fn intersectCube(origin: vec3f, direction: vec3f) -> vec2f {
-	var tmin: vec3f = (vec3f(0.0) - origin) / direction;
-	var tmax: vec3f = (vec3f(1.0) - origin) / direction;
-	var t1: vec3f = min(tmin, tmax);
-	var t2: vec3f = max(tmin, tmax);
-	var tnear: f32 = max(max(t1.x, t1.y), t1.z);
-	var tfar: f32 = min(min(t2.x, t2.y), t2.z);
-	return vec2f(tnear, tfar);
-}
+#include <intersectCube>
 
 fn sampleVolumeColor(position: vec3f) -> vec4f {
-    var volumeSample: vec2f = textureSample(uVolume, uVolumeSampler, position).rg;
-    var transferSample: vec4f = textureSample(uTransferFunction, uTransferFunctionSampler, volumeSample);
+    let volumeSample: vec2f = textureSample(uVolume, uVolumeSampler, position).rg;
+    let transferSample: vec4f = textureSample(uTransferFunction, uTransferFunctionSampler, volumeSample);
     return transferSample;
 }
 
 @fragment
 fn fragment_main(@location(0) rayFrom: vec3f, @location(1) rayTo: vec3f) -> @location(0) vec4f {
-    var rayDirection: vec3f = rayTo - rayFrom;
-    var tbounds: vec2f = max(intersectCube(rayFrom, rayDirection), vec2f(0.0));
+    let rayDirection: vec3f = rayTo - rayFrom;
+    let tbounds: vec2f = max(intersectCube(rayFrom, rayDirection), vec2f(0.0));
 
     if (tbounds.x >= tbounds.y) {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
     
-    var fromVal: vec3f = mix(rayFrom, rayTo, tbounds.x);
-    var toVal: vec3f = mix(rayFrom, rayTo, tbounds.y);
+    let fromVal: vec3f = mix(rayFrom, rayTo, tbounds.x);
+    let toVal: vec3f = mix(rayFrom, rayTo, tbounds.y);
 
-    var rayStepLength: f32 = distance(fromVal, toVal) * uniforms.stepSize;
+    let rayStepLength: f32 = distance(fromVal, toVal) * uniforms.stepSize;
 
     var t: f32 = 0.0; // uniforms.stepSize * uniforms.offset;
     var accumulator = vec4f(0.0);
 
     while (t < 1.0 /*&& accumulator.a < 0.99*/) {
-        var position: vec3f = mix(fromVal, toVal, t);
+        let position: vec3f = mix(fromVal, toVal, t);
         var colorSample = sampleVolumeColor(position);
         colorSample.a *= rayStepLength * uniforms.extinction;
         colorSample = vec4f(colorSample.rgb * colorSample.a, colorSample.a);
@@ -116,7 +107,7 @@ const vertices = array<vec2f, 3>(
 
 @vertex
 fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
-    var vertex: vec2f = vertices[vertexIndex];
+    let vertex: vec2f = vertices[vertexIndex];
 
     var vertexOut : VertexOut;
     vertexOut.position = vec4f(vertex, 0.0, 1.0);
@@ -126,8 +117,8 @@ fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
 
 @fragment
 fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
-    var accumulator = textureSample(uAccumulator, uAccumulatorSampler, uv);
-    var frame = textureSample(uFrame, uFrameSampler, uv);
+    let accumulator = textureSample(uAccumulator, uAccumulatorSampler, uv);
+    let frame = textureSample(uFrame, uFrameSampler, uv);
     return mix(accumulator, frame, uMix);
 }
 
@@ -150,7 +141,7 @@ const vertices = array<vec2f, 3>(
 
 @vertex
 fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
-    var vertex: vec2f = vertices[vertexIndex];
+    let vertex: vec2f = vertices[vertexIndex];
 
     var vertexOut : VertexOut;
     vertexOut.position = vec4f(vertex, 0.0, 1.0);
