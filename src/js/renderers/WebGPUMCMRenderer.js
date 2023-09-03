@@ -327,6 +327,8 @@ _integrateFrame() {
         0,                                          // uniforms.blur
         this.extinction,                            // uniforms.extinction
         this.anisotropy,                            // uniforms.anisotropy
+    ]));
+    device.queue.writeBuffer(this._integrateUniformBuffer, 88, new Uint32Array([
         this.bounces,                               // uniforms.bounces
         this.steps                                  // uniforms.steps
     ]));
