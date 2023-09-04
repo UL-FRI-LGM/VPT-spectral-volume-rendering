@@ -47,8 +47,8 @@ fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
 #include <intersectCube>
 
 fn sampleVolumeColor(position: vec3f) -> vec4f {
-    let volumeSample: vec2f = textureSample(uVolume, uVolumeSampler, position).rg;
-    let transferSample: vec4f = textureSample(uTransferFunction, uTransferFunctionSampler, volumeSample);
+    let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
+    let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0);
     return transferSample;
 }
 
@@ -66,16 +66,16 @@ fn fragment_main(@location(0) rayFrom: vec3f, @location(1) rayTo: vec3f) -> @loc
 
     let rayStepLength: f32 = distance(fromVal, toVal) * uniforms.stepSize;
 
-    var t: f32 = 0.0; // uniforms.stepSize * uniforms.offset;
+    var t: f32 = uniforms.stepSize * uniforms.offset;
     var accumulator = vec4f(0.0);
 
-    while (t < 1.0 /*&& accumulator.a < 0.99*/) {
+    while (t < 1.0 && accumulator.a < 0.99) {
         let position: vec3f = mix(fromVal, toVal, t);
         var colorSample = sampleVolumeColor(position);
         colorSample.a *= rayStepLength * uniforms.extinction;
         colorSample = vec4f(colorSample.rgb * colorSample.a, colorSample.a);
         accumulator += (1.0 - accumulator.a) * colorSample;
-        t += 0.01; // uniforms.stepSize;
+        t += uniforms.stepSize;
     }
 
     if (accumulator.a > 1.0) {
