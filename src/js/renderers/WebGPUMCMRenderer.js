@@ -12,8 +12,8 @@ const [ SHADERS, MIXINS ] = await Promise.all([
 
 export class WebGPUMCMRenderer extends WebGPUAbstractRenderer {
 
-constructor(device, volume, camera, environmentTexture, options = {}) {
-    super(device, volume, camera, environmentTexture, options);
+constructor(device, volume, camera, environment, options = {}) {
+    super(device, volume, camera, environment, options);
 
     this.registerProperties([
         {
@@ -346,7 +346,7 @@ _integrateFrame() {
             },
             {
                 binding: 2,
-                resource: this._transferFunctionTexture.createView()
+                resource: this._transferFunction.createView()
             },
             {
                 binding: 3,
@@ -354,11 +354,11 @@ _integrateFrame() {
             },
             {
                 binding: 4,
-                resource: this._transferFunctionTexture.createView() // TODO: Change to environment texture
+                resource: this._environment.texture.createView()
             },
             {
                 binding: 5,
-                resource: this._transferFunctionSampler // TODO: Change to environment texture sampler
+                resource: this._environment.sampler
             },
             {
                 binding: 6,

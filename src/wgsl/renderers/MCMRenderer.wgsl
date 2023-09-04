@@ -86,7 +86,7 @@ fn resetPhoton(state: ptr<function, u32>, photon: ptr<function, Photon>, fragmen
 }
 
 fn sampleEnvironmentMap(d: vec3f) -> vec4f {
-    let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5;
+    let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
     return textureSample(uEnvironment, uEnvironmentSampler, texCoord);
 }
 
@@ -124,7 +124,7 @@ fn mean3(v: vec3f) -> f32 {
 @fragment
 fn fragment_main(@location(0) fragment_position: vec2f) -> FragmentOut {
     var photon: Photon;
-    let mappedPosition: vec2f = fragment_position * 0.5 + 0.5;
+    let mappedPosition: vec2f = fragment_position * vec2f(0.5, -0.5) + 0.5;
     photon.position = textureSample(uPosition, uPositionSampler, mappedPosition).xyz;
     let directionAndBounces: vec4f = textureSample(uDirection, uDirectionSampler, mappedPosition);
     photon.direction = directionAndBounces.xyz;

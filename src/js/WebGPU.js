@@ -18,20 +18,50 @@ static createBuffer(device, data, usage) {
     return buffer;
 }
 
-static createTextureFromArray(device, size, format, bytesPerTexel, usage, data) {
-    // TODO: Infer bytesPerTexel from format
-    let texture = device.createTexture({
+/**
+ * Create texture from typed array
+ * @param {GPUDevice} device 
+ * @param {number[]} size 
+ * @param {TypedArray} data 
+ * @param {string} format 
+ * @param {number} usage 
+ * @returns {GPUTexture}
+ */
+static createTextureFromTypedArray(
+        device,
         size,
-        format,
-        usage
-    })
-    device.queue.writeTexture(
-        { texture },
         data,
-        {  bytesPerRow: size[0] * bytesPerTexel },
-        size
-    );
+        format = "rgba8unorm",
+        usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+) {
+    if (data.byteLength % (size[0] * size[1]) !== 0) {
+        console.warn(`Data byte length (${data.byteLength}) not divisible by size (${size})`);
+    }
+    // TODO: Infer bytes per texel from format
+    const bytesPerRow = Math.floor(data.byteLength / size[1]);
+    let texture = device.createTexture({ size, format, usage });
+    device.queue.writeTexture({ texture }, data, { bytesPerRow }, size);
     return texture
+}
+
+/**
+ * Create texture from external image
+ * @param {GPUDevice} device 
+ * @param {ImageBitmap|HTMLCanvasElement} source 
+ * @param {string} format
+ * @param {number} usage
+ * @returns {GPUTexture}
+ */
+static createTextureFromImageBitmapOrCanvas(
+        device,
+        source,
+        format = "rgba8unorm",
+        usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+) {
+    const size = [source.width, source.height];
+    const texture = device.createTexture({ size, format, usage });
+    device.queue.copyExternalImageToTexture({ source }, { texture }, size)
+    return texture;
 }
 
 /**
@@ -39,7 +69,7 @@ static createTextureFromArray(device, size, format, bytesPerTexel, usage, data) 
  * @param {GPUDevice} device 
  * @param {Object<string, string>} shaders 
  * @param {Object<string, string>} mixins 
- * @returns {Objec<string, GPUShaderModule>}
+ * @returns {Object<string, GPUShaderModule>}
  */
 static buildShaderModules(device, shaders, mixins) {
     const cooked = {};

@@ -54,7 +54,7 @@ constructor(onInitialized, options = {}) {
     // this.volume = new WebGPUVolume(this.gl);
 }
 
-// ============================ WEBGL SUBSYSTEM ============================ //
+// ============================ WEBGPU SUBSYSTEM ============================ //
 
 async initWebGPU() {
     if (!navigator.gpu) {
@@ -92,6 +92,11 @@ async initWebGPU() {
         magFilter: "nearest",
         minFilter: "nearest"
     });
+
+    this.environment = {
+        texture: WebGPU.createTextureFromTypedArray(device, [1, 1], new Uint8Array([255, 255, 255, 255]), "rgba8unorm"),
+        sampler: device.createSampler({ magFilter: "linear", minFilter: "linear" })
+    };
 
     return; // TODO
 
@@ -146,8 +151,12 @@ async setVolume(reader) {
     }
 }
 
-setEnvironmentMap(image) {
-    throw new Error("Not implemented");
+async setEnvironmentMap(image) {
+    const imageBitmap = await createImageBitmap(image);
+    if (this.environment.texture) {
+        this.environment.texture.destroy();
+    }
+    this.environment.texture = WebGPU.createTextureFromImageBitmapOrCanvas(this.device, imageBitmap, "rgba8unorm");
 }
 
 setFilter(filter) {
@@ -165,7 +174,7 @@ chooseRenderer(renderer) {
         this.renderer.destroy();
     }
     const rendererClass = WebGPURendererFactory(renderer);
-    this.renderer = new rendererClass(this.device, this.volume, this.camera, this.environmentTexture, {
+    this.renderer = new rendererClass(this.device, this.volume, this.camera, this.environment, {
         resolution: this.resolution,
     });
     this.renderer.reset();

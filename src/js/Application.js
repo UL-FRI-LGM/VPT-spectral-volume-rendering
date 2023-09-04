@@ -201,8 +201,8 @@ _handleEnvmapLoad(e) {
     const options = e.detail;
     let image = new Image();
     image.crossOrigin = 'anonymous';
-    image.addEventListener('load', () => {
-        this.renderingContext.setEnvironmentMap(image);
+    image.addEventListener('load', async () => {
+        await this.renderingContext.setEnvironmentMap(image);
         this.renderingContext.renderer.reset();
     });
 

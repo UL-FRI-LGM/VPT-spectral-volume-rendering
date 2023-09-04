@@ -12,7 +12,7 @@ const [ SHADERS, MIXINS ] = await Promise.all([
 
 export class WebGPUAbstractRenderer extends PropertyBag {
 
-constructor(device, volume, camera, environmentTexture, options = {}) {
+constructor(device, volume, camera, environment, options = {}) {
     super();
 
     this._resolution = options.resolution ?? 512;
@@ -20,14 +20,15 @@ constructor(device, volume, camera, environmentTexture, options = {}) {
     this._device = device;
     this._volume = volume;
     this._camera = camera;
-    this._environmentTexture = environmentTexture;
+    this._environment = environment;
 
     this._rebuildBuffers();
 
-    this._transferFunctionTexture = WebGPU.createTextureFromArray(
-        device, [2, 1], "rgba8unorm", 4,
-        GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-        new Uint8Array([255, 0, 0, 0, 255, 0, 0, 255])
+    this._transferFunction = WebGPU.createTextureFromTypedArray(
+        device,
+        [2, 1],
+        new Uint8Array([255, 0, 0, 0, 255, 0, 0, 255]),
+        "rgba8unorm-srgb"
     );
     this._transferFunctionSampler = device.createSampler({
         magFilter: "linear",
@@ -103,12 +104,12 @@ setVolume(volume) {
 }
 
 setTransferFunction(transferFunction) {
-    return; // TODO
-
-    const gl = this._gl;
-    gl.bindTexture(gl.TEXTURE_2D, this._transferFunction);
-    gl.texImage2D(gl.TEXTURE_2D, 0,
-        gl.SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE, transferFunction);
+    const device = this._device;
+    // TODO: Consider not re-creating the texture if it's the same size
+    if (this._transferFunction) {
+        this._transferFunction.destroy();
+    }
+    this._transferFunction = WebGPU.createTextureFromImageBitmapOrCanvas(device, transferFunction, "rgba8unorm-srgb");
 }
 
 setResolution(resolution) {
