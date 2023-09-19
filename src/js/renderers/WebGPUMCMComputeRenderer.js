@@ -74,7 +74,7 @@ constructor(device, volume, camera, environment, options = {}) {
 
     // TODO: Define all buffer sizes in one place
 
-    const photonSize = 80; // Photon.wgsl
+    const photonSize = 64; // Photon.wgsl
     this._photonBuffer = device.createBuffer({
         size: this._resolution * this._resolution * photonSize,
         usage: GPUBufferUsage.STORAGE
@@ -90,7 +90,11 @@ constructor(device, volume, camera, environment, options = {}) {
         layout: "auto",
         compute: {
             module: this._programs.render,
-            entryPoint: "compute_main"
+            entryPoint: "compute_main",
+            constants: {
+                WORKGROUP_SIZE_X: this._workgroup_size,
+                WORKGROUP_SIZE_Y: this._workgroup_size
+            }
         }
     });
 
@@ -104,7 +108,11 @@ constructor(device, volume, camera, environment, options = {}) {
         layout: "auto",
         compute: {
             module: this._programs.reset,
-            entryPoint: "compute_main"
+            entryPoint: "compute_main",
+            constants: {
+                WORKGROUP_SIZE_X: this._workgroup_size,
+                WORKGROUP_SIZE_Y: this._workgroup_size
+            }
         }
     });
 }

@@ -1,6 +1,8 @@
 // #part /wgsl/shaders/renderers/MCMCompute/render
 
-const WORKGROUP_SIZE: vec3u = vec3u(8u, 8u, 1u); // TODO: Use pipeline-overridable constant
+override WORKGROUP_SIZE_X: u32;
+override WORKGROUP_SIZE_Y: u32;
+
 const EPS: f32 = 1e-5;
 
 struct Uniforms {
@@ -87,14 +89,19 @@ fn mean3(v: vec3f) -> f32 {
     return dot(v, vec3f(1.0 / 3.0));
 }
 
-@compute @workgroup_size(WORKGROUP_SIZE.x, WORKGROUP_SIZE.y, WORKGROUP_SIZE.z)
+@compute @workgroup_size(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y)
 fn compute_main(
     @builtin(global_invocation_id) globalId : vec3u,
     @builtin(num_workgroups) numWorkgroups: vec3u
 ) {
-    let globalSize: vec3u = WORKGROUP_SIZE * numWorkgroups;
+    let globalSize: vec3u = vec3u(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, 1u) * numWorkgroups;
     let globalIndex: u32 = globalId.x + globalId.y * globalSize.x;
+    if (globalIndex > arrayLength(&uPhotons)) {
+        return;
+    }
+
     let screenPosition: vec2f = ((vec2f(globalId.xy) + 0.5) * uniforms.inverseResolution - 0.5) * vec2f(2.0, -2.0); // TODO: Double check this
+
     var photon: Photon = uPhotons[globalIndex];
 
     var state: u32 = hash3(vec3u(globalId.x, globalId.y, bitcast<u32>(uniforms.randSeed)));
@@ -144,7 +151,8 @@ fn compute_main(
 
 // #part /wgsl/shaders/renderers/MCMCompute/reset
 
-const WORKGROUP_SIZE: vec3u = vec3u(8u, 8u, 1u); // TODO: Use pipeline-overridable constant
+override WORKGROUP_SIZE_X: u32;
+override WORKGROUP_SIZE_Y: u32;
 
 struct Uniforms {
     mvpInverseMatrix: mat4x4f,
@@ -171,15 +179,19 @@ struct Uniforms {
 
 #include <unprojectRand>
 
-@compute @workgroup_size(WORKGROUP_SIZE.x, WORKGROUP_SIZE.y, WORKGROUP_SIZE.z)
+@compute @workgroup_size(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y)
 fn compute_main(
     @builtin(global_invocation_id) globalId : vec3u,
     @builtin(num_workgroups) numWorkgroups: vec3u
 ) {
-    let globalSize: vec3u = WORKGROUP_SIZE * numWorkgroups;
+    let globalSize: vec3u = vec3u(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, 1u) * numWorkgroups;
     let globalIndex: u32 = globalId.x + globalId.y * globalSize.x;
+    if (globalIndex > arrayLength(&uPhotons)) {
+        return;
+    }
+    
     let screenPosition: vec2f = ((vec2f(globalId.xy) + 0.5) * uniforms.inverseResolution - 0.5) * vec2f(2.0, -2.0); // TODO: Double check this
-
+    
     var photon: Photon;
     var fromPos: vec3f;
     var toPos: vec3f;
