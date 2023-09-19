@@ -1,18 +1,7 @@
-// #part /wgsl/shaders/renderers/MCM/integrate
+// #part /wgsl/shaders/renderers/MCMCompute/render
 
+const WORKGROUP_SIZE: vec3u = vec3u(8u, 8u, 1u); // TODO: Use pipeline-overridable constant
 const EPS: f32 = 1e-5;
-
-struct VertexOut {
-    @builtin(position) position: vec4f,
-    @location(0) vertex_position: vec2f,
-};
-
-struct FragmentOut {
-    @location(0) position: vec4f,
-    @location(1) direction: vec4f,
-    @location(2) transmittance: vec4f,
-    @location(3) radiance: vec4f
-}
 
 struct Uniforms {
     mvpInverseMatrix: mat4x4f,
@@ -32,32 +21,9 @@ struct Uniforms {
 @group(0) @binding(4) var uEnvironment: texture_2d<f32>;
 @group(0) @binding(5) var uEnvironmentSampler: sampler;
 
-@group(0) @binding(6) var uPosition: texture_2d<f32>;
-@group(0) @binding(7) var uPositionSampler: sampler;
-@group(0) @binding(8) var uDirection: texture_2d<f32>;
-@group(0) @binding(9) var uDirectionSampler: sampler;
-@group(0) @binding(10) var uTransmittance: texture_2d<f32>;
-@group(0) @binding(11) var uTransmittanceSampler: sampler;
-@group(0) @binding(12) var uRadiance: texture_2d<f32>;
-@group(0) @binding(13) var uRadianceSampler: sampler;
-
-@group(0) @binding(14) var<uniform> uniforms: Uniforms;
-
-const vertices = array<vec2f, 3>(
-    vec2f(-1.0, -1.0),
-    vec2f( 3.0, -1.0),
-    vec2f(-1.0,  3.0)
-);
-
-@vertex
-fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
-    let vertex: vec2f = vertices[vertexIndex];
-
-    var vertexOut : VertexOut;
-    vertexOut.position = vec4f(vertex, 0.0, 1.0);
-    vertexOut.vertex_position = vertex;
-    return vertexOut;
-}
+@group(0) @binding(6) var<uniform> uniforms: Uniforms;
+@group(0) @binding(7) var<storage, read_write> uPhotons: array<Photon>;
+@group(0) @binding(8) var uRadiance: texture_storage_2d<rgba8unorm, write>;
 
 
 #include <Photon>
@@ -87,12 +53,12 @@ fn resetPhoton(state: ptr<function, u32>, photon: ptr<function, Photon>, screenP
 
 fn sampleEnvironmentMap(d: vec3f) -> vec4f {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
-    return textureSample(uEnvironment, uEnvironmentSampler, texCoord);
+    return textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0);
 }
 
 fn sampleVolumeColor(position: vec3f) -> vec4f {
-    let volumeSample: vec2f = textureSample(uVolume, uVolumeSampler, position).rg;
-    let transferSample: vec4f = textureSample(uTransferFunction, uTransferFunctionSampler, volumeSample);
+    let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
+    let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0);
     return transferSample;
 }
 
@@ -121,20 +87,17 @@ fn mean3(v: vec3f) -> f32 {
     return dot(v, vec3f(1.0 / 3.0));
 }
 
-@fragment
-fn fragment_main(@location(0) fragment_position: vec2f) -> FragmentOut {
-    var photon: Photon;
-    let mappedPosition: vec2f = fragment_position * vec2f(0.5, -0.5) + 0.5;
-    photon.position = textureSample(uPosition, uPositionSampler, mappedPosition).xyz;
-    let directionAndBounces: vec4f = textureSample(uDirection, uDirectionSampler, mappedPosition);
-    photon.direction = directionAndBounces.xyz;
-    photon.bounces = u32(directionAndBounces.w + 0.5);
-    photon.transmittance = textureSample(uTransmittance, uTransmittanceSampler, mappedPosition).rgb;
-    let radianceAndSamples: vec4f = textureSample(uRadiance, uRadianceSampler, mappedPosition);
-    photon.radiance = radianceAndSamples.rgb;
-    photon.samples = u32(radianceAndSamples.w + 0.5);
+@compute @workgroup_size(WORKGROUP_SIZE.x, WORKGROUP_SIZE.y, WORKGROUP_SIZE.z)
+fn compute_main(
+    @builtin(global_invocation_id) globalId : vec3u,
+    @builtin(num_workgroups) numWorkgroups: vec3u
+) {
+    let globalSize: vec3u = WORKGROUP_SIZE * numWorkgroups;
+    let globalIndex: u32 = globalId.x + globalId.y * globalSize.x;
+    let screenPosition: vec2f = ((vec2f(globalId.xy) + 0.5) * uniforms.inverseResolution - 0.5) * vec2f(2.0, -2.0); // TODO: Double check this
+    var photon: Photon = uPhotons[globalIndex];
 
-    var state: u32 = hash3(vec3u(bitcast<u32>(mappedPosition.x), bitcast<u32>(mappedPosition.y), bitcast<u32>(uniforms.randSeed)));
+    var state: u32 = hash3(vec3u(globalId.x, globalId.y, bitcast<u32>(uniforms.randSeed)));
     for (var i: u32 = 0u; i < uniforms.steps; i++) {
         let dist: f32 = random_exponential(&state, uniforms.extinction);
         photon.position += dist * photon.direction;
@@ -157,13 +120,13 @@ fn fragment_main(@location(0) fragment_position: vec2f) -> FragmentOut {
             let radiance: vec3f = photon.transmittance * envSample.rgb;
             photon.samples++;
             photon.radiance += (radiance - photon.radiance) / f32(photon.samples);
-            resetPhoton(&state, &photon, fragment_position);
+            resetPhoton(&state, &photon, screenPosition);
         } else if (fortuneWheel < PAbsorption) {
             // Absorption
             let radiance: vec3f = vec3f(0.0);
             photon.samples++;
             photon.radiance += (radiance - photon.radiance) / f32(photon.samples);
-            resetPhoton(&state, &photon, fragment_position);
+            resetPhoton(&state, &photon, screenPosition);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
             photon.transmittance *= volumeSample.rgb;
@@ -174,60 +137,14 @@ fn fragment_main(@location(0) fragment_position: vec2f) -> FragmentOut {
         }
     }
 
-    var fragmentOut: FragmentOut;
-    fragmentOut.position = vec4f(photon.position, 0.0);
-    fragmentOut.direction = vec4f(photon.direction, f32(photon.bounces));
-    fragmentOut.transmittance = vec4f(photon.transmittance, 0.0);
-    fragmentOut.radiance = vec4f(photon.radiance, f32(photon.samples));
-    return fragmentOut;
+    uPhotons[globalIndex] = photon;
+    textureStore(uRadiance, globalId.xy, vec4f(photon.radiance, 1.0));
 }
 
 
-// #part /wgsl/shaders/renderers/MCM/render
+// #part /wgsl/shaders/renderers/MCMCompute/reset
 
-struct VertexOut {
-    @builtin(position) position: vec4f,
-    @location(0) uv: vec2f
-}
-
-@group(0) @binding(0) var uAccumulator: texture_2d<f32>;
-@group(0) @binding(1) var uAccumulatorSampler: sampler;
-
-const vertices = array<vec2f, 3>(
-    vec2f(-1.0, -1.0),
-    vec2f( 3.0, -1.0),
-    vec2f(-1.0,  3.0)
-);
-
-@vertex
-fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
-    let vertex: vec2f = vertices[vertexIndex];
-
-    var vertexOut : VertexOut;
-    vertexOut.position = vec4f(vertex, 0.0, 1.0);
-    vertexOut.uv = vertex * vec2f(0.5, -0.5) + 0.5;
-    return vertexOut;
-}
-
-@fragment
-fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
-    return textureSample(uAccumulator, uAccumulatorSampler, uv);
-}
-
-
-// #part /wgsl/shaders/renderers/MCM/reset
-
-struct VertexOut {
-    @builtin(position) position: vec4f,
-    @location(0) vertex_position: vec2f,
-};
-
-struct FragmentOut {
-    @location(0) position: vec4f,
-    @location(1) direction: vec4f,
-    @location(2) transmittance: vec4f,
-    @location(3) radiance: vec4f
-}
+const WORKGROUP_SIZE: vec3u = vec3u(8u, 8u, 1u); // TODO: Use pipeline-overridable constant
 
 struct Uniforms {
     mvpInverseMatrix: mat4x4f,
@@ -237,22 +154,7 @@ struct Uniforms {
 };
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-const vertices = array<vec2f, 3>(
-    vec2f(-1.0, -1.0),
-    vec2f( 3.0, -1.0),
-    vec2f(-1.0,  3.0)
-);
-
-@vertex
-fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
-    let vertex: vec2f = vertices[vertexIndex];
-
-    var vertexOut : VertexOut;
-    vertexOut.position = vec4f(vertex, 0.0, 1.0);
-    vertexOut.vertex_position = vertex;
-    return vertexOut;
-}
+@group(0) @binding(1) var<storage, read_write> uPhotons: array<Photon>; // TODO: Check if it's possible to use read only
 
 
 #include <Photon>
@@ -269,14 +171,21 @@ fn vertex_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOut  {
 
 #include <unprojectRand>
 
-@fragment
-fn fragment_main(@location(0) fragment_position: vec2f) -> FragmentOut {
+@compute @workgroup_size(WORKGROUP_SIZE.x, WORKGROUP_SIZE.y, WORKGROUP_SIZE.z)
+fn compute_main(
+    @builtin(global_invocation_id) globalId : vec3u,
+    @builtin(num_workgroups) numWorkgroups: vec3u
+) {
+    let globalSize: vec3u = WORKGROUP_SIZE * numWorkgroups;
+    let globalIndex: u32 = globalId.x + globalId.y * globalSize.x;
+    let screenPosition: vec2f = ((vec2f(globalId.xy) + 0.5) * uniforms.inverseResolution - 0.5) * vec2f(2.0, -2.0); // TODO: Double check this
+
     var photon: Photon;
     var fromPos: vec3f;
     var toPos: vec3f;
 
-    var state: u32 = hash3(vec3u(bitcast<u32>(fragment_position.x), bitcast<u32>(fragment_position.y), bitcast<u32>(uniforms.randSeed)));
-    unprojectRand(&state, fragment_position, uniforms.mvpInverseMatrix, uniforms.inverseResolution, uniforms.blur, &fromPos, &toPos);
+    var state: u32 = hash3(vec3u(globalId.x, globalId.y, bitcast<u32>(uniforms.randSeed)));
+    unprojectRand(&state, screenPosition, uniforms.mvpInverseMatrix, uniforms.inverseResolution, uniforms.blur, &fromPos, &toPos);
     photon.direction = normalize(toPos - fromPos);
     let tbounds: vec2f = max(intersectCube(fromPos, photon.direction), vec2f(0.0));
     photon.position = fromPos + tbounds.x * photon.direction;
@@ -285,10 +194,5 @@ fn fragment_main(@location(0) fragment_position: vec2f) -> FragmentOut {
     photon.bounces = 0u;
     photon.samples = 0u;
 
-    var fragmentOut: FragmentOut;
-    fragmentOut.position = vec4f(photon.position, 0);
-    fragmentOut.direction = vec4f(photon.direction, f32(photon.bounces));
-    fragmentOut.transmittance = vec4f(photon.transmittance, 0);
-    fragmentOut.radiance = vec4f(photon.radiance, f32(photon.samples));
-    return fragmentOut;
+    uPhotons[globalIndex] = photon;
 }

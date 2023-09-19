@@ -2,7 +2,7 @@
 
 fn unprojectRand(
         state: ptr<function, u32>,
-        position: vec2f,
+        screenPosition: vec2f,
         inverseMvp: mat4x4f,
         inverseResolution: vec2f,
         blur: f32,
@@ -11,11 +11,11 @@ fn unprojectRand(
 ) {
     // Sample a disk on the near plane (depth of field)
     let offset: vec2f = random_disk(state) * blur;
-    let nearPosition: vec4f = vec4f(position + offset, -1.0, 1.0);
+    let nearPosition: vec4f = vec4f(screenPosition + offset, -1.0, 1.0);
 
     // Sample a square on the far plane (antialiasing)
     let antialiasing: vec2f = (random_square(state) * 2.0 - 1.0) * inverseResolution;
-    let farPosition: vec4f = vec4f(position + antialiasing, 1.0, 1.0);
+    let farPosition: vec4f = vec4f(screenPosition + antialiasing, 1.0, 1.0);
 
     // Map to world space
     let fromDirty: vec4f = inverseMvp * nearPosition;
