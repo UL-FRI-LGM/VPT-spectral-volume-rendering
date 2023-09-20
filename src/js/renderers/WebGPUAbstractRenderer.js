@@ -1,14 +1,7 @@
-import { mat4 } from '../../lib/gl-matrix-module.js';
-
 import { PropertyBag } from '../PropertyBag.js';
 import { WebGPU } from '../WebGPU.js';
 import { WebGPUSingleBuffer } from '../WebGPUSingleBuffer.js';
 import { WebGPUDoubleBuffer } from '../WebGPUDoubleBuffer.js';
-
-const [ SHADERS, MIXINS ] = await Promise.all([
-    'shaders-wgsl.json',
-    'mixins-wgsl.json',
-].map(url => fetch(url).then(response => response.json())));
 
 export class WebGPUAbstractRenderer extends PropertyBag {
 
@@ -34,38 +27,14 @@ constructor(device, volume, camera, environment, options = {}) {
         magFilter: "linear",
         minFilter: "linear"
     });
-
-    return; // TODO
-
-    this._transferFunction = WebGL.createTexture(gl, {
-        width   : 2,
-        height  : 1,
-        data    : new Uint8Array([255, 0, 0, 0, 255, 0, 0, 255]),
-
-        iformat : gl.SRGB8_ALPHA8,
-        format  : gl.RGBA,
-        type    : gl.UNSIGNED_BYTE,
-
-        wrapS   : gl.CLAMP_TO_EDGE,
-        wrapT   : gl.CLAMP_TO_EDGE,
-        min     : gl.LINEAR,
-        mag     : gl.LINEAR,
-    });
-
-    this._clipQuadProgram = WebGL.buildPrograms(gl, {
-        quad: SHADERS.quad
-    }, MIXINS).quad;
 }
 
 destroy() {
-    return; // TODO
-
-    const gl = this._gl;
     this._frameBuffer.destroy();
     this._accumulationBuffer.destroy();
     this._renderBuffer.destroy();
-    gl.deleteTexture(this._transferFunction);
-    gl.deleteProgram(this._clipQuadProgram.program);
+
+    this._transferFunction.destroy();
 }
 
 render() {
@@ -152,26 +121,15 @@ _getRenderBufferSpec() {
     return [{
         textureDescriptor: {
             size: [this._resolution, this._resolution],
-            format: "rgba8unorm",
+            format: "rgba16float",
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         },
         samplerDescriptor: {
+            addressModeU: "clamp-to-edge",
+            addressModeV: "clamp-to-edge",
             magFilter: "nearest",
             minFilter: "nearest"
         }
-    }];
-
-    const gl = this._gl;
-    return [{
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        wrapS   : gl.CLAMP_TO_EDGE,
-        wrapT   : gl.CLAMP_TO_EDGE,
-        format  : gl.RGBA,
-        iformat : gl.RGBA16F,
-        type    : gl.FLOAT,
     }];
 }
 

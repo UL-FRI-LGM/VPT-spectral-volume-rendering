@@ -82,27 +82,27 @@ constructor(device, volume, camera, environment, options = {}) {
             {
                 binding: 0,
                 visibility: GPUShaderStage.FRAGMENT,
-                texture: { /*sampleType: "float",*/ viewDimension: "3d" }
+                texture: { sampleType: "float", viewDimension: "3d" }
             },
             {
                 binding: 1,
                 visibility: GPUShaderStage.FRAGMENT,
-                sampler: { /*type: "filtering"*/ }
+                sampler: { type: "filtering" }
             },
             {
                 binding: 2,
                 visibility: GPUShaderStage.FRAGMENT,
-                texture: { /*sampleType: "float"*/ }
+                texture: { sampleType: "float" }
             },
             {
                 binding: 3,
                 visibility: GPUShaderStage.FRAGMENT,
-                sampler: { /*type: "filtering"*/ }
+                sampler: { type: "filtering" }
             },
             {
                 binding: 4,
                 visibility: GPUShaderStage.FRAGMENT,
-                texture: { /*sampleType: "float"*/ }
+                texture: { sampleType: "float" }
             },
             {
                 binding: 5,
@@ -225,17 +225,6 @@ constructor(device, volume, camera, environment, options = {}) {
     });
 }
 
-destroy() {
-    return; // TODO
-
-    const gl = this._gl;
-    Object.keys(this._programs).forEach(programName => {
-        gl.deleteProgram(this._programs[programName].program);
-    });
-
-    super.destroy();
-}
-
 _resetFrame() {
     const device = this._device;
 
@@ -250,7 +239,7 @@ _resetFrame() {
     mat4.multiply(matrix, projectionMatrix, matrix);
     mat4.invert(matrix, matrix);
 
-    device.queue.writeBuffer(this._resetUniformBuffer, 0, matrix);
+    device.queue.writeBuffer(this._resetUniformBuffer, 0, matrix); // uniforms.mvpInverseMatrix
     device.queue.writeBuffer(this._resetUniformBuffer, 64, new Float32Array([
         1 / this._resolution, 1 / this._resolution, // uniforms.inverseResolution
         Math.random(),                              // uniforms.randSeed
@@ -320,7 +309,7 @@ _integrateFrame() {
     mat4.multiply(matrix, projectionMatrix, matrix);
     mat4.invert(matrix, matrix);
 
-    device.queue.writeBuffer(this._integrateUniformBuffer, 0, matrix);
+    device.queue.writeBuffer(this._integrateUniformBuffer, 0, matrix); // uniforms.mvpInverseMatrix
     device.queue.writeBuffer(this._integrateUniformBuffer, 64, new Float32Array([
         1 / this._resolution, 1 / this._resolution, // uniforms.inverseResolution
         Math.random(),                              // uniforms.randSeed
@@ -410,19 +399,19 @@ _integrateFrame() {
             },
             {
                 view: this._accumulationBuffer.getWriteAttachments()[1].texture.createView(),
-                clearValue: [0.0, 0.0, 0.0, 1.0],
+                clearValue: [0.0, 0.0, 0.0, 1.0], // TODO: Should all values be 0?
                 loadOp: "clear",
                 storeOp: "store"
             },
             {
                 view: this._accumulationBuffer.getWriteAttachments()[2].texture.createView(),
-                clearValue: [0.0, 0.0, 0.0, 1.0],
+                clearValue: [0.0, 0.0, 0.0, 1.0], // TODO: Should all values be 0?
                 loadOp: "clear",
                 storeOp: "store"
             },
             {
                 view: this._accumulationBuffer.getWriteAttachments()[3].texture.createView(),
-                clearValue: [0.0, 0.0, 0.0, 1.0],
+                clearValue: [0.0, 0.0, 0.0, 1.0], // TODO: Should all values be 0?
                 loadOp: "clear",
                 storeOp: "store"
             }
@@ -488,7 +477,7 @@ _getAccumulationBufferSpec() {
     const positionBufferSpec = {
         textureDescriptor: {
             size: [this._resolution, this._resolution],
-            format: "rgba16float",
+            format: "rgba16float", // TODO: Change to rgba32float
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         },
         samplerDescriptor: {
@@ -500,7 +489,7 @@ _getAccumulationBufferSpec() {
     const directionBufferSpec = {
         textureDescriptor: {
             size: [this._resolution, this._resolution],
-            format: "rgba16float",
+            format: "rgba16float", // TODO: Change to rgba32float
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         },
         samplerDescriptor: {
@@ -512,7 +501,7 @@ _getAccumulationBufferSpec() {
     const transmittanceBufferSpec = {
         textureDescriptor: {
             size: [this._resolution, this._resolution],
-            format: "rgba16float",
+            format: "rgba16float", // TODO: Change to rgba32float
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         },
         samplerDescriptor: {
@@ -524,7 +513,7 @@ _getAccumulationBufferSpec() {
     const radianceBufferSpec = {
         textureDescriptor: {
             size: [this._resolution, this._resolution],
-            format: "rgba16float",
+            format: "rgba16float", // TODO: Change to rgba32float
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         },
         samplerDescriptor: {
