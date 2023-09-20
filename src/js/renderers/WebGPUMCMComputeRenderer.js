@@ -142,7 +142,7 @@ _resetFrame() {
     mat4.multiply(matrix, projectionMatrix, matrix);
     mat4.invert(matrix, matrix);
 
-    device.queue.writeBuffer(this._resetUniformBuffer, 0, matrix);
+    device.queue.writeBuffer(this._resetUniformBuffer, 0, matrix); // uniforms.mvpInverseMatrix
     device.queue.writeBuffer(this._resetUniformBuffer, 64, new Float32Array([
         1 / this._resolution, 1 / this._resolution, // uniforms.inverseResolution
         Math.random(),                              // uniforms.randSeed

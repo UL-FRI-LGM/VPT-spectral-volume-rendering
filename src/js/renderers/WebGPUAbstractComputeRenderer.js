@@ -30,7 +30,9 @@ constructor(device, volume, camera, environment, options = {}) {
 }
 
 destroy() {
-    return; // TODO
+    this._renderBuffer.destroy();
+
+    this._transferFunction.destroy();
 }
 
 render() {
@@ -87,26 +89,15 @@ _getRenderBufferSpec() {
     return [{
         textureDescriptor: {
             size: [this._resolution, this._resolution],
-            format: "rgba8unorm",
+            format: "rgba16float",
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
         },
         samplerDescriptor: {
+            addressModeU: "clamp-to-edge",
+            addressModeV: "clamp-to-edge",
             magFilter: "nearest",
             minFilter: "nearest"
         }
-    }];
-
-    const gl = this._gl;
-    return [{
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        wrapS   : gl.CLAMP_TO_EDGE,
-        wrapT   : gl.CLAMP_TO_EDGE,
-        format  : gl.RGBA,
-        iformat : gl.RGBA16F,
-        type    : gl.FLOAT,
     }];
 }
 

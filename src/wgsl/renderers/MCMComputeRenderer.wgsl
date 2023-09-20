@@ -25,7 +25,7 @@ struct Uniforms {
 
 @group(0) @binding(6) var<uniform> uniforms: Uniforms;
 @group(0) @binding(7) var<storage, read_write> uPhotons: array<Photon>;
-@group(0) @binding(8) var uRadiance: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(8) var uRadiance: texture_storage_2d<rgba16float, write>;
 
 
 #include <Photon>
