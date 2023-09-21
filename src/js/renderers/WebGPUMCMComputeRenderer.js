@@ -118,12 +118,7 @@ constructor(device, volume, camera, environment, options = {}) {
 }
 
 destroy() {
-    return; // TODO
-
-    const gl = this._gl;
-    Object.keys(this._programs).forEach(programName => {
-        gl.deleteProgram(this._programs[programName].program);
-    });
+    this._photonBuffer.destroy();
 
     super.destroy();
 }

@@ -11,12 +11,8 @@ constructor(device, spec) {
 }
 
 destroy() {
-    return; // TODO
-
-    const gl = this._gl;
-    gl.deleteFramebuffer(this._framebuffer);
-    for (let texture of this._attachments.color) {
-        gl.deleteTexture(texture);
+    for (let attachment of this._attachments) {
+        attachment.texture.destroy();
     }
 }
 

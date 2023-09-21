@@ -12,16 +12,11 @@ constructor(device, spec) {
 }
 
 destroy() {
-    return; // TODO
-
-    const gl = this._gl;
-    gl.deleteFramebuffer(this._readFramebuffer);
-    for (let texture of this._readAttachments.color) {
-        gl.deleteTexture(texture);
+    for (let readAttachment of this._readAttachments) {
+        readAttachment.texture.destroy();
     }
-    gl.deleteFramebuffer(this._writeFramebuffer);
-    for (let texture of this._writeAttachments.color) {
-        gl.deleteTexture(texture);
+    for (let writeAttachment of this._writeAttachments) {
+        writeAttachment.texture.destroy();
     }
 }
 

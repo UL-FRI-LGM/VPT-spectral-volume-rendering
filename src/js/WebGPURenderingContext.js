@@ -25,6 +25,7 @@ constructor(onInitialized, options = {}) {
 
     this.canvas = document.createElement('canvas');
 
+    // TODO: Find a better way to do this
     this.initWebGPU().then(() => {
         this.volume = new WebGPUVolume(this.device);
         onInitialized();
@@ -51,7 +52,7 @@ constructor(onInitialized, options = {}) {
     //});
     this.cameraAnimator = new OrbitCameraAnimator(this.camera, this.canvas);
 
-    // this.volume = new WebGPUVolume(this.gl);
+    // this.volume = new WebGPUVolume(this.device);
 }
 
 // ============================ WEBGPU SUBSYSTEM ============================ //
@@ -94,43 +95,17 @@ async initWebGPU() {
     });
 
     this.environment = {
-        texture: WebGPU.createTextureFromTypedArray(device, [1, 1], new Uint8Array([255, 255, 255, 255]), "rgba8unorm"),
-        sampler: device.createSampler({ magFilter: "linear", minFilter: "linear" })
+        texture: WebGPU.createTextureFromTypedArray(
+            device,
+            [1, 1],
+            new Uint8Array([255, 255, 255, 255]),
+            "rgba8unorm" // TODO: HDRI & OpenEXR support
+        ),
+        sampler: device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear"
+        })
     };
-
-    return; // TODO
-
-    const contextSettings = {
-        alpha: false,
-        depth: false,
-        stencil: false,
-        antialias: false,
-        preserveDrawingBuffer: true,
-    };
-
-    this.contextRestorable = true;
-
-    this.gl = this.canvas.getContext('webgl2', contextSettings);
-    const gl = this.gl;
-
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-
-    this.environmentTexture = WebGL.createTexture(gl, {
-        width   : 1,
-        height  : 1,
-        data    : new Uint8Array([255, 255, 255, 255]),
-        format  : gl.RGBA,
-        iformat : gl.RGBA, // TODO: HDRI & OpenEXR support
-        type    : gl.UNSIGNED_BYTE,
-        wrapS   : gl.CLAMP_TO_EDGE,
-        wrapT   : gl.CLAMP_TO_EDGE,
-        min     : gl.LINEAR,
-        max     : gl.LINEAR,
-    });
-
-    this.program = WebGL.buildPrograms(gl, {
-        quad: SHADERS.quad
-    }, MIXINS).quad;
 }
 
 resize(width, height) {
@@ -202,7 +177,7 @@ render() {
         entries: [
             {
                 binding: 0,
-                resource: this.renderer.getTexture().createView()
+                resource: this.renderer.getTexture().createView() // this.toneMapper.getTexture().createView()
             },
             {
                 binding: 1,
@@ -227,28 +202,6 @@ render() {
     pass.draw(3);
     pass.end();
     device.queue.submit([encoder.finish()]);
-
-    return;
-
-    const gl = this.gl;
-    if (!gl || !this.renderer || !this.toneMapper) {
-        return;
-    }
-
-    this.renderer.render();
-    this.toneMapper.render();
-
-    const { program, uniforms } = this.program;
-    gl.useProgram(program);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.toneMapper.getTexture());
-    gl.uniform1i(uniforms.uTexture, 0);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 get resolution() {
