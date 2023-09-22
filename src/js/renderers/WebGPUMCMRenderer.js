@@ -331,7 +331,7 @@ _integrateFrame() {
             },
             {
                 binding: 1,
-                resource: this._volume.getSampler()
+                resource: this._volume.getTextureSampler()
             },
             {
                 binding: 2,

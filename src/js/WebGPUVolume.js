@@ -11,7 +11,7 @@ constructor(device, reader, options = {}) {
     this.metadata = null;
     this.ready = false;
     this.texture = null;
-    this.sampler = null;
+    this.textureSampler = null;
     this.modality = null;
 }
 
@@ -58,7 +58,7 @@ async readModality(modalityName) {
         format: "r8unorm", // TODO
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
-    this.sampler = device.createSampler({
+    this.textureSampler = device.createSampler({
         magFilter: "linear",
         minFilter: "linear"
     });
@@ -125,33 +125,25 @@ _typize(data, type) {
 }
 
 getTexture() {
-    if (this.ready) {
-        return this.texture;
-    } else {
+    if (!this.ready) {
         return null;
     }
+    return this.texture;
 }
 
-getSampler() {
-    if (this.ready) {
-        return this.sampler;
-    } else {
+getTextureSampler() {
+    if (!this.ready) {
         return null;
     }
+    return this.textureSampler;
 }
 
 setFilter(filter) {
-    return; // TODO
-
-    if (!this.texture) {
-        return;
-    }
-
-    const gl = this._gl;
-    filter = filter === 'linear' ? gl.LINEAR : gl.NEAREST;
-    gl.bindTexture(gl.TEXTURE_3D, this.texture);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, filter);
-    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, filter);
+    const device = this._device;
+    this.textureSampler = device.createSampler({
+        magFilter: filter,
+        minFilter: filter
+    });
 }
 
 }
