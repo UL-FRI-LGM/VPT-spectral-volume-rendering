@@ -77,6 +77,10 @@ getTexture() {
     return this._renderBuffer.getAttachments()[0].texture;
 }
 
+getTextureSampler() {
+    return this._renderBuffer.getAttachments()[0].sampler;
+}
+
 _resetFrame() {
     // IMPLEMENT
 }

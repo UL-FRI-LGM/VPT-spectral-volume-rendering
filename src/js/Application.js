@@ -142,8 +142,6 @@ _handleRendererChange() {
 }
 
 _handleToneMapperChange() {
-    return; // TODO
-
     if (this.toneMapperDialog) {
         this.toneMapperDialog.remove();
     }

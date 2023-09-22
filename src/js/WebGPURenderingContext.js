@@ -6,7 +6,7 @@ import { PerspectiveCamera } from './PerspectiveCamera.js';
 import { WebGPUVolume } from './WebGPUVolume.js';
 
 import { WebGPURendererFactory } from './renderers/WebGPURendererFactory.js';
-import { ToneMapperFactory } from './tonemappers/ToneMapperFactory.js';
+import { WebGPUToneMapperFactory } from './tonemappers/WebGPUToneMapperFactory.js';
 
 import { CircleAnimator } from './animators/CircleAnimator.js';
 import { OrbitCameraAnimator } from './animators/OrbitCameraAnimator.js';
@@ -154,34 +154,49 @@ chooseRenderer(renderer) {
     });
     this.renderer.reset();
     if (this.toneMapper) {
-        this.toneMapper.setTexture(this.renderer.getTexture());
+        this.toneMapper.setTexture(this.renderer.getTexture(), this.renderer.getTextureSampler());
     }
     this.isTransformationDirty = true;
 }
 
 chooseToneMapper(toneMapper) {
-    throw new Error("Not implemented");
+    if (this.toneMapper) {
+        this.toneMapper.destroy();
+    }
+    const device = this.device;
+    let texture, textureSampler;
+    if (this.renderer) {
+        texture = this.renderer.getTexture();
+        textureSampler = this.renderer.getTextureSampler();
+    } else {
+        texture = WebGPU.getFallbackTexture(device).texture;
+        textureSampler = WebGPU.getFallbackTexture(device).sampler;
+    }
+    const toneMapperClass = WebGPUToneMapperFactory(toneMapper);
+    this.toneMapper = new toneMapperClass(device, texture, textureSampler, {
+        resolution: this.resolution,
+    });
 }
 
 render() {
     const device = this.device;
-    if (!device || !this.renderer /*|| !this.toneMapper*/) {
+    if (!device || !this.renderer || !this.toneMapper) {
         return;
     }
 
     this.renderer.render();
-    // this.toneMapper.render();
+    this.toneMapper.render();
 
     const bindGroup = device.createBindGroup({
         layout: this.pipeline.getBindGroupLayout(0),
         entries: [
             {
                 binding: 0,
-                resource: this.renderer.getTexture().createView() // this.toneMapper.getTexture().createView()
+                resource: this.toneMapper.getTexture().createView()
             },
             {
                 binding: 1,
-                resource: this.sampler
+                resource: this.toneMapper.getTextureSampler()
             },
         ]
     });
@@ -218,7 +233,7 @@ set resolution(resolution) {
     if (this.toneMapper) {
         this.toneMapper.setResolution(resolution);
         if (this.renderer) {
-            this.toneMapper.setTexture(this.renderer.getTexture());
+            this.toneMapper.setTexture(this.renderer.getTexture(), this.renderer.getTextureSampler());
         }
     }
 }

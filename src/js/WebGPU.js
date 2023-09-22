@@ -97,4 +97,22 @@ static buildShaderModules(device, shaders, mixins) {
     return modules;
 }
 
+/**
+ * Get fallback texture for handling errors
+ * @param {GPUDevice} device 
+ * @returns {Object<string, GPUObjectBase}
+ */
+static getFallbackTexture(device) {
+    if (this._fallbackTexture) {
+        return this._fallbackTexture;
+    }
+
+    this._fallbackTexture = {
+        texture: WebGPU.createTextureFromTypedArray(device, [1, 1], new Uint8Array([255, 255, 255, 255]), "rgba8unorm"),
+        sampler: device.createSampler()
+    };
+    return this._fallbackTexture;
+}
+static _fallbackTexture = undefined;
+
 }
