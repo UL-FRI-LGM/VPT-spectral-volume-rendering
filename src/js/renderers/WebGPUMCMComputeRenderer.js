@@ -92,8 +92,8 @@ constructor(device, volume, camera, environment, options = {}) {
             module: this._programs.render,
             entryPoint: "compute_main",
             constants: {
-                WORKGROUP_SIZE_X: this._workgroup_size,
-                WORKGROUP_SIZE_Y: this._workgroup_size
+                WORKGROUP_SIZE_X: this._workgroup_size[0],
+                WORKGROUP_SIZE_Y: this._workgroup_size[1]
             }
         }
     });
@@ -110,8 +110,8 @@ constructor(device, volume, camera, environment, options = {}) {
             module: this._programs.reset,
             entryPoint: "compute_main",
             constants: {
-                WORKGROUP_SIZE_X: this._workgroup_size,
-                WORKGROUP_SIZE_Y: this._workgroup_size
+                WORKGROUP_SIZE_X: this._workgroup_size[0],
+                WORKGROUP_SIZE_Y: this._workgroup_size[1]
             }
         }
     });
@@ -162,8 +162,7 @@ _resetFrame() {
     const pass = encoder.beginComputePass();
     pass.setPipeline(this._resetPipeline);
     pass.setBindGroup(0, bindGroup);
-    const numWorkgroups = Math.ceil(this._resolution / this._workgroup_size);
-    pass.dispatchWorkgroups(numWorkgroups, numWorkgroups, 1);
+    pass.dispatchWorkgroups(...this._getWorkgroupCount());
     pass.end();
     device.queue.submit([encoder.finish()]);
 }
@@ -241,8 +240,7 @@ _renderFrame() {
     const pass = encoder.beginComputePass();
     pass.setPipeline(this._renderPipeline);
     pass.setBindGroup(0, bindGroup);
-    const numWorkgroups = Math.ceil(this._resolution / this._workgroup_size);
-    pass.dispatchWorkgroups(numWorkgroups, numWorkgroups, 1);
+    pass.dispatchWorkgroups(...this._getWorkgroupCount());
     pass.end();
     device.queue.submit([encoder.finish()]);
 }

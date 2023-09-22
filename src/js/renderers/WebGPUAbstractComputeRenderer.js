@@ -8,7 +8,7 @@ constructor(device, volume, camera, environment, options = {}) {
     super();
 
     this._resolution = options.resolution ?? 512;
-    this._workgroup_size = options.workgroup_size ?? 8; // Per dimension
+    this._workgroup_size = options.workgroup_size ?? [8, 8];
 
     this._device = device;
     this._volume = volume;
@@ -103,6 +103,13 @@ _getRenderBufferSpec() {
             minFilter: "nearest"
         }
     }];
+}
+
+_getWorkgroupCount() {
+    return [
+        Math.ceil(this._resolution / this._workgroup_size[0]),
+        Math.ceil(this._resolution / this._workgroup_size[1])
+    ]
 }
 
 }
