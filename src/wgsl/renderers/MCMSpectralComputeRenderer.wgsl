@@ -196,7 +196,7 @@ fn compute_main(
 
 // #part /wgsl/mixins/PhotonSpectral
 
-const N_BINS = 1;
+const N_BINS = 3;
 const MIN_WAVELENGTH = 400.0;
 const MAX_WAVELENGTH = 700.0;
 
