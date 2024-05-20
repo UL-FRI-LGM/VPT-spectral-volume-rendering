@@ -44,13 +44,26 @@ struct Uniforms {
 
 fn sampleEnvironmentMap(d: vec3f, wavelength: f32) -> f32 {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
-    return textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0).r; // TODO: the return value should depend on the wavelength
+    let color = textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0);
+    if (wavelength < 500.0) {
+        return color.r;
+    } else if (wavelength < 600.0) {
+        return color.g;
+    } else {
+        return color.b;
+    }
 }
 
 fn sampleVolumeColor(position: vec3f, wavelength: f32) -> vec2f {
     let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
-    let transferSample: vec2f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0).ba; // TODO: the return value should depend on the wavelength
-    return transferSample;
+    let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0); 
+    if (wavelength < 500.0) {
+        return transferSample.ra;
+    } else if (wavelength < 600.0) {
+        return transferSample.ga;
+    } else {
+        return transferSample.ba;
+    }
 }
 
 fn sampleHenyeyGreensteinAngleCosine(state: ptr<function, u32>, g: f32) -> f32 {
@@ -91,20 +104,20 @@ fn compute_main(
 
     let screenPosition: vec2f = ((vec2f(globalId.xy) + 0.5) * uniforms.inverseResolution - 0.5) * vec2f(2.0, -2.0); // TODO: Double check this
 
-    var photon: PhotonSpectral = uPhotons[globalIndex];
+    var p: PhotonSpectral = uPhotons[globalIndex];
 
     var state: u32 = hash3(vec3u(globalId.x, globalId.y, bitcast<u32>(uniforms.randSeed)));
     for (var i: u32 = 0u; i < uniforms.steps; i++) {
         let dist: f32 = random_exponential(&state, uniforms.extinction);
-        photon.position += dist * photon.direction;
+        p.position += dist * p.direction;
 
-        let volumeSample: vec2f = sampleVolumeColor(photon.position, photon.wavelength);
+        let volumeSample: vec2f = sampleVolumeColor(p.position, p.wavelength);
         let volume_alpha: f32 = volumeSample.y;
         let volume_value: f32 = volumeSample.x;
 
         let PNull: f32 = 1.0 - volume_alpha;
         var PScattering: f32;
-        if (photon.bounces >= uniforms.maxBounces) {
+        if (p.bounces >= uniforms.maxBounces) {
             PScattering = 0.0;
         } else {
             PScattering = volume_alpha * volume_value;
@@ -112,33 +125,33 @@ fn compute_main(
         let PAbsorption: f32 = 1.0 - PNull - PScattering;
 
         let fortuneWheel: f32 = random_uniform(&state);
-        if (any(photon.position > vec3f(1.0)) || any(photon.position < vec3f(0.0))) {
+        if (any(p.position > vec3f(1.0)) || any(p.position < vec3f(0.0))) {
             // Out of bounds
-            let envSample: f32 = sampleEnvironmentMap(photon.direction, photon.wavelength);
-            let radiance: f32 = photon.transmittance[0] * envSample;
-            photon.samples++;
-            photon.radiance[0] += (radiance - photon.radiance[0]) / f32(photon.samples);
-            PhotonSpectral_reset(&photon, screenPosition, &state);
+            let envSample: f32 = sampleEnvironmentMap(p.direction, p.wavelength);
+            let radiance: f32 = p.transmittance[p.bin] * envSample;
+            p.samples++;
+            p.radiance[p.bin] += (radiance - p.radiance[p.bin]) / f32(p.samples);
+            PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption) {
             // Absorption
-            photon.samples++;
-            photon.radiance[0] += (0.0 - photon.radiance[0]) / f32(photon.samples);
-            PhotonSpectral_reset(&photon, screenPosition, &state);
+            p.samples++;
+            p.radiance[p.bin] += (0.0 - p.radiance[p.bin]) / f32(p.samples);
+            PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
-            photon.transmittance[0] *= volume_value;
-            photon.direction = sampleHenyeyGreenstein(&state, uniforms.anisotropy, photon.direction);
-            photon.bounces++;
+            p.transmittance[p.bin] *= volume_value;
+            p.direction = sampleHenyeyGreenstein(&state, uniforms.anisotropy, p.direction);
+            p.bounces++;
         } else {
             // Null collision
         }
     }
-    uPhotons[globalIndex] = photon;
+    uPhotons[globalIndex] = p;
     // testing the range of x
     if globalId.x < 10 {
         textureStore(uRadiance, globalId.xy, vec4f(1.0, 0.5, 0.0, 1.0));
     } else{
-        textureStore(uRadiance, globalId.xy, vec4f(photon.radiance[0],photon.radiance[0],photon.radiance[0], 1.0));
+        textureStore(uRadiance, globalId.xy, vec4f(p.radiance[0],p.radiance[1],p.radiance[2], 1.0));
     }
 }
 
@@ -219,14 +232,18 @@ fn PhotonSpectral_reset(photon: ptr<function, PhotonSpectral>, screenPosition: v
     (*photon).bounces = 0u;
     var tbounds: vec2f = max(intersectCube(fromPos, (*photon).direction), vec2f(0.0));
     (*photon).position = fromPos + tbounds.x * (*photon).direction;
-    (*photon).transmittance[0] = 1.0;
+    for (var i: u32 = 0u; i < N_BINS; i++) {
+        (*photon).transmittance[i] = 1.0;
+    }
     PhotonSpectral_set_wavelength(photon, random_uniform(state) * (MAX_WAVELENGTH - MIN_WAVELENGTH) + MIN_WAVELENGTH);
 }
 
 fn PhotonSpectral_full_reset(photon: ptr<function, PhotonSpectral>, screenPosition: vec2f, state: ptr<function, u32>) {
     PhotonSpectral_reset(photon, screenPosition, state);
     (*photon).samples = 0u;
-    (*photon).radiance[0] = 1.0;
+    for (var i: u32 = 0u; i < N_BINS; i++){
+        (*photon).radiance[i] = 1.0;
+    }
 }
 
 fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, wavelength: f32) {
