@@ -42,14 +42,14 @@ struct Uniforms {
 #include <unprojectRand>
 #include <PhotonSpectral>
 
-fn sampleEnvironmentMap(d: vec3f) -> vec4f {
+fn sampleEnvironmentMap(d: vec3f, wavelength: f32) -> f32 {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
-    return textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0);
+    return textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0).r; // TODO: the return value should depend on the wavelength
 }
 
-fn sampleVolumeColor(position: vec3f) -> vec4f {
+fn sampleVolumeColor(position: vec3f, wavelength: f32) -> vec2f {
     let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
-    let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0);
+    let transferSample: vec2f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0).ba; // TODO: the return value should depend on the wavelength
     return transferSample;
 }
 
@@ -98,22 +98,24 @@ fn compute_main(
         let dist: f32 = random_exponential(&state, uniforms.extinction);
         photon.position += dist * photon.direction;
 
-        let volumeSample: vec4f = sampleVolumeColor(photon.position);
+        let volumeSample: vec2f = sampleVolumeColor(photon.position, photon.wavelength);
+        let volume_alpha: f32 = volumeSample.y;
+        let volume_value: f32 = volumeSample.x;
 
-        let PNull: f32 = 1.0 - volumeSample.a;
+        let PNull: f32 = 1.0 - volume_alpha;
         var PScattering: f32;
         if (photon.bounces >= uniforms.maxBounces) {
             PScattering = 0.0;
         } else {
-            PScattering = volumeSample.a * max3(volumeSample.rgb);
+            PScattering = volume_alpha * volume_value;
         }
         let PAbsorption: f32 = 1.0 - PNull - PScattering;
 
         let fortuneWheel: f32 = random_uniform(&state);
         if (any(photon.position > vec3f(1.0)) || any(photon.position < vec3f(0.0))) {
             // Out of bounds
-            let envSample: vec4f = sampleEnvironmentMap(photon.direction);
-            let radiance: f32 = photon.transmittance[0] * envSample.r;
+            let envSample: f32 = sampleEnvironmentMap(photon.direction, photon.wavelength);
+            let radiance: f32 = photon.transmittance[0] * envSample;
             photon.samples++;
             photon.radiance[0] += (radiance - photon.radiance[0]) / f32(photon.samples);
             PhotonSpectral_reset(&photon, screenPosition, &state);
@@ -124,7 +126,7 @@ fn compute_main(
             PhotonSpectral_reset(&photon, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
-            photon.transmittance[0] *= volumeSample.r;
+            photon.transmittance[0] *= volume_value;
             photon.direction = sampleHenyeyGreenstein(&state, uniforms.anisotropy, photon.direction);
             photon.bounces++;
         } else {
