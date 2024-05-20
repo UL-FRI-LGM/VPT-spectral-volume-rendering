@@ -236,7 +236,7 @@ fn PhotonSpectral_reset(photon: ptr<function, PhotonSpectral>, screenPosition: v
         (*photon).transmittance[i] = 1.0;
     }
 
-    let n_bins = u32(spectrum_representation[0]);
+    let n_bins = u32(spectrum_representation[0] + 0.5);
     let min_lam = spectrum_representation[1];
     let max_lam = spectrum_representation[n_bins + 1];
 
@@ -254,7 +254,7 @@ fn PhotonSpectral_full_reset(photon: ptr<function, PhotonSpectral>, screenPositi
 fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, wavelength: f32) {
     (*photon).wavelength = wavelength;
 
-    let n_bins = u32(spectrum_representation[0]);
+    let n_bins = u32(spectrum_representation[0] + 0.5);
     let min_lam = spectrum_representation[1];
     let max_lam = spectrum_representation[n_bins + 1];
 
@@ -262,6 +262,7 @@ fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, waveleng
     for (var i: u32 = 1u; i < n_bins; i++) {
         if wavelength < spectrum_representation[i + 1] {
             (*photon).bin = i - 1u;
+            break;
         }
     }
 
