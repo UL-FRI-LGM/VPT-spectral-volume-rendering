@@ -72,9 +72,9 @@ constructor(device, volume, camera, environment, options = {}) {
 
     this._programs = WebGPU.buildShaderModules(device, SHADERS.renderers.MCMSpectralCompute, MIXINS);
 
-    // TODO: Define all buffer sizes in one place
-
-    const photonSize = 64; // Photon.wgsl
+    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001002601000000000000003d888b0237284d3025f2381bcb288a12facb8c3e7f7733ecde0bb6ed05c51472810347a223350abfadad2c924bcfab8a9f439e590d1e2fcc50378a4ff641db32215f352e30b72fc8480ccf40c5a4399a41f7f3e43228f49363d2d14b9ec7e2a03a58c95f39dae3ed63fbf21cf49d0df2f8816e813ba4305286c6cfe3769958e4af388f0ad5edfdaf3b1993d680020e5af47f59dc9d3d9ac0829a601edcc563a36eff50ccaa12621357bed7d96cd6cec16d05884e0b5f5937c0b27e8a35b05f0effff09cb0c00
+    // TODO: compute this dynamically
+    const photonSize = 48; // Photon.wgsl
     this._photonBuffer = device.createBuffer({
         size: this._resolution * this._resolution * photonSize,
         usage: GPUBufferUsage.STORAGE

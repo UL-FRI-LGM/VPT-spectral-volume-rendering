@@ -28,7 +28,6 @@ struct Uniforms {
 @group(0) @binding(8) var uRadiance: texture_storage_2d<rgba16float, write>;
 
 
-#include <PhotonSpectral>
 #include <intersectCube>
 
 #include <constants>
@@ -41,17 +40,7 @@ struct Uniforms {
 #include <random/distribution/exponential>
 
 #include <unprojectRand>
-
-fn resetPhoton(state: ptr<function, u32>, photon: ptr<function, PhotonSpectral>, screenPosition: vec2f) {
-    var fromPos: vec3f;
-    var toPos: vec3f;
-    unprojectRand(state, screenPosition, uniforms.mvpInverseMatrix, uniforms.inverseResolution, uniforms.blur, &fromPos, &toPos);
-    (*photon).direction = normalize(toPos - fromPos);
-    (*photon).bounces = 0u;
-    var tbounds: vec2f = max(intersectCube(fromPos, (*photon).direction), vec2f(0.0));
-    (*photon).position = fromPos + tbounds.x * (*photon).direction;
-    (*photon).transmittance = vec3f(1.0);
-}
+#include <PhotonSpectral>
 
 fn sampleEnvironmentMap(d: vec3f) -> vec4f {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
@@ -124,19 +113,18 @@ fn compute_main(
         if (any(photon.position > vec3f(1.0)) || any(photon.position < vec3f(0.0))) {
             // Out of bounds
             let envSample: vec4f = sampleEnvironmentMap(photon.direction);
-            let radiance: vec3f = photon.transmittance * envSample.rgb;
+            let radiance: f32 = photon.transmittance[0] * envSample.r;
             photon.samples++;
-            photon.radiance += (radiance - photon.radiance) / f32(photon.samples);
-            resetPhoton(&state, &photon, screenPosition);
+            photon.radiance[0] += (radiance - photon.radiance[0]) / f32(photon.samples);
+            PhotonSpectral_reset(&photon, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption) {
             // Absorption
-            let radiance: vec3f = vec3f(0.0);
             photon.samples++;
-            photon.radiance += (radiance - photon.radiance) / f32(photon.samples);
-            resetPhoton(&state, &photon, screenPosition);
+            photon.radiance[0] += (0.0 - photon.radiance[0]) / f32(photon.samples);
+            PhotonSpectral_reset(&photon, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
-            photon.transmittance *= volumeSample.rgb;
+            photon.transmittance[0] *= volumeSample.r;
             photon.direction = sampleHenyeyGreenstein(&state, uniforms.anisotropy, photon.direction);
             photon.bounces++;
         } else {
@@ -148,7 +136,7 @@ fn compute_main(
     if globalId.x < 10 {
         textureStore(uRadiance, globalId.xy, vec4f(1.0, 0.5, 0.0, 1.0));
     } else{
-        textureStore(uRadiance, globalId.xy, vec4f(photon.radiance, 1.0));
+        textureStore(uRadiance, globalId.xy, vec4f(photon.radiance[0],photon.radiance[0],photon.radiance[0], 1.0));
     }
 }
 
@@ -169,7 +157,6 @@ struct Uniforms {
 @group(0) @binding(1) var<storage, read_write> uPhotons: array<PhotonSpectral>; // TODO: Check if it's possible to use read only
 
 
-#include <PhotonSpectral>
 #include <intersectCube>
 
 #include <constants>
@@ -182,6 +169,7 @@ struct Uniforms {
 #include <random/distribution/exponential>
 
 #include <unprojectRand>
+#include <PhotonSpectral>
 
 @compute @workgroup_size(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y)
 fn compute_main(
@@ -197,20 +185,49 @@ fn compute_main(
     let screenPosition: vec2f = ((vec2f(globalId.xy) + 0.5) * uniforms.inverseResolution - 0.5) * vec2f(2.0, -2.0); // TODO: Double check this
     
     var photon: PhotonSpectral;
-    var fromPos: vec3f;
-    var toPos: vec3f;
-
     var state: u32 = hash3(vec3u(globalId.x, globalId.y, bitcast<u32>(uniforms.randSeed)));
-    unprojectRand(&state, screenPosition, uniforms.mvpInverseMatrix, uniforms.inverseResolution, uniforms.blur, &fromPos, &toPos);
-    photon.direction = normalize(toPos - fromPos);
-    let tbounds: vec2f = max(intersectCube(fromPos, photon.direction), vec2f(0.0));
-    photon.position = fromPos + tbounds.x * photon.direction;
-    photon.transmittance = vec3f(1.0);
-    photon.radiance = vec3f(1.0);
-    photon.bounces = 0u;
-    photon.samples = 0u;
-    photon.wavelength = 0.0;
-    photon.bin = 0;
+    PhotonSpectral_full_reset(&photon, screenPosition, &state);
 
     uPhotons[globalIndex] = photon;
+}
+
+
+// #part /wgsl/mixins/PhotonSpectral
+
+const N_BINS = 1;
+const MIN_WAVELENGTH = 400.0;
+const MAX_WAVELENGTH = 700.0;
+
+struct PhotonSpectral {
+    position: vec3f, 
+    bounces: u32,
+    direction: vec3f, 
+    samples: u32,
+    bin: u32, 
+    wavelength: f32,
+    radiance: array<f32, N_BINS>, 
+    transmittance: array<f32, N_BINS>,
+};
+
+fn PhotonSpectral_reset(photon: ptr<function, PhotonSpectral>, screenPosition: vec2f, state: ptr<function, u32>) {
+    var fromPos: vec3f;
+    var toPos: vec3f;
+    unprojectRand(state, screenPosition, uniforms.mvpInverseMatrix, uniforms.inverseResolution, uniforms.blur, &fromPos, &toPos);
+    (*photon).direction = normalize(toPos - fromPos);
+    (*photon).bounces = 0u;
+    var tbounds: vec2f = max(intersectCube(fromPos, (*photon).direction), vec2f(0.0));
+    (*photon).position = fromPos + tbounds.x * (*photon).direction;
+    (*photon).transmittance[0] = 1.0;
+    PhotonSpectral_set_wavelength(photon, random_uniform(state) * (MAX_WAVELENGTH - MIN_WAVELENGTH) + MIN_WAVELENGTH);
+}
+
+fn PhotonSpectral_full_reset(photon: ptr<function, PhotonSpectral>, screenPosition: vec2f, state: ptr<function, u32>) {
+    PhotonSpectral_reset(photon, screenPosition, state);
+    (*photon).samples = 0u;
+    (*photon).radiance[0] = 1.0;
+}
+
+fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, wavelength: f32) {
+    (*photon).wavelength = wavelength;
+    (*photon).bin = u32((wavelength - MIN_WAVELENGTH) / (MAX_WAVELENGTH - MIN_WAVELENGTH) * f32(N_BINS));
 }
