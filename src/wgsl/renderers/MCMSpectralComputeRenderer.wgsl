@@ -47,11 +47,11 @@ fn sampleEnvironmentMap(d: vec3f, wavelength: f32) -> f32 {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
     let color = textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0);
     if (wavelength < 500.0) {
-        return color.r;
+        return color.b;
     } else if (wavelength < 600.0) {
         return color.g;
     } else {
-        return color.b;
+        return color.r;
     }
 }
 
@@ -59,11 +59,11 @@ fn sampleVolumeColor(position: vec3f, wavelength: f32) -> vec2f {
     let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
     let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0); 
     if (wavelength < 500.0) {
-        return transferSample.ra;
+        return transferSample.ba;
     } else if (wavelength < 600.0) {
         return transferSample.ga;
     } else {
-        return transferSample.ba;
+        return transferSample.ra;
     }
 }
 
@@ -148,12 +148,9 @@ fn compute_main(
         }
     }
     uPhotons[globalIndex] = p;
-    // testing the range of x
-    if globalId.x < 10 {
-        textureStore(uRadiance, globalId.xy, vec4f(spectrum_representation[0], spectrum_representation[1], spectrum_representation[2], 1.0));
-    } else{
-        textureStore(uRadiance, globalId.xy, vec4f(p.radiance[0],p.radiance[1],p.radiance[2], 1.0));
-    }
+
+    let radiance_rgb = PhotonSpectral_radiance_to_rgb(&p);
+    textureStore(uRadiance, globalId.xy, vec4f(radiance_rgb, 1.0));
 }
 
 
@@ -211,7 +208,7 @@ fn compute_main(
 
 // #part /wgsl/mixins/PhotonSpectral
 
-const MAX_N_BINS = 3;
+const MAX_N_BINS = 10;
 
 struct PhotonSpectral {
     position: vec3f, 
@@ -267,4 +264,28 @@ fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, waveleng
     }
 
     // (*photon).bin = u32((wavelength - min_lam) / (max_lam - min_lam) * f32(MAX_N_BINS));
+}
+
+fn PhotonSpectral_radiance_to_xyz(photon: ptr<function, PhotonSpectral>) -> vec3f {
+    let n_bins = u32(spectrum_representation[0] + 0.5);
+
+    var radiance_xyz: vec3f = vec3f(0.0);
+    for (var i: u32 = 0u; i < n_bins; i++){
+        radiance_xyz += photon.radiance[i] * vec3f(
+            spectrum_representation[2+n_bins+i],   // x
+            spectrum_representation[2+2*n_bins+i], // y
+            spectrum_representation[2+3*n_bins+i]  // z
+        ); 
+    }
+
+    return radiance_xyz;
+}
+
+fn PhotonSpectral_radiance_to_rgb(photon: ptr<function, PhotonSpectral>) -> vec3f {
+    let radiance_xyz: vec3f = PhotonSpectral_radiance_to_xyz(photon);
+    return vec3f(
+        3.240479 * radiance_xyz.x - 1.537150 * radiance_xyz.y - 0.498536 * radiance_xyz.z,
+        -0.969255 * radiance_xyz.x + 1.875990 * radiance_xyz.y + 0.041556 * radiance_xyz.z,
+        0.055647 * radiance_xyz.x - 0.204041 * radiance_xyz.y + 1.057311 * radiance_xyz.z
+    );
 }
