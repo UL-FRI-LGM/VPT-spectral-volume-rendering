@@ -1,6 +1,7 @@
 import { PropertyBag } from '../PropertyBag.js';
 import { WebGPU } from '../WebGPU.js';
 import { WebGPUSingleBuffer } from '../WebGPUSingleBuffer.js';
+import { Transform } from '../Transform.js';
 
 export class WebGPUAbstractComputeRenderer extends PropertyBag {
 
@@ -14,6 +15,8 @@ constructor(device, volume, camera, environment, options = {}) {
     this._volume = volume;
     this._camera = camera;
     this._environment = environment;
+
+    this._volumeTransform = options.transform ?? new Transform();
 
     this._rebuildBuffers();
 

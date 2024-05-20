@@ -13,7 +13,7 @@ struct Uniforms {
     extinction: f32,
     anisotropy: f32,
     maxBounces: u32,
-    steps: u32
+    steps: u32,
 };
 
 @group(0) @binding(0) var uVolume: texture_3d<f32>;
@@ -26,6 +26,7 @@ struct Uniforms {
 @group(0) @binding(6) var<uniform> uniforms: Uniforms;
 @group(0) @binding(7) var<storage, read_write> uPhotons: array<PhotonSpectral>;
 @group(0) @binding(8) var uRadiance: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(9) var<storage, read> spectrum_representation: array<f32, 64>;
 
 
 #include <intersectCube>
@@ -149,7 +150,7 @@ fn compute_main(
     uPhotons[globalIndex] = p;
     // testing the range of x
     if globalId.x < 10 {
-        textureStore(uRadiance, globalId.xy, vec4f(1.0, 0.5, 0.0, 1.0));
+        textureStore(uRadiance, globalId.xy, vec4f(spectrum_representation[0], spectrum_representation[1], spectrum_representation[2], 1.0));
     } else{
         textureStore(uRadiance, globalId.xy, vec4f(p.radiance[0],p.radiance[1],p.radiance[2], 1.0));
     }
@@ -170,6 +171,7 @@ struct Uniforms {
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read_write> uPhotons: array<PhotonSpectral>; // TODO: Check if it's possible to use read only
+@group(0) @binding(2) var<storage, read> spectrum_representation: array<f32, 64>;
 
 
 #include <intersectCube>
@@ -209,9 +211,7 @@ fn compute_main(
 
 // #part /wgsl/mixins/PhotonSpectral
 
-const N_BINS = 3;
-const MIN_WAVELENGTH = 400.0;
-const MAX_WAVELENGTH = 700.0;
+const MAX_N_BINS = 3;
 
 struct PhotonSpectral {
     position: vec3f, 
@@ -220,8 +220,8 @@ struct PhotonSpectral {
     samples: u32,
     bin: u32, 
     wavelength: f32,
-    radiance: array<f32, N_BINS>, 
-    transmittance: array<f32, N_BINS>,
+    radiance: array<f32, MAX_N_BINS>, 
+    transmittance: array<f32, MAX_N_BINS>,
 };
 
 fn PhotonSpectral_reset(photon: ptr<function, PhotonSpectral>, screenPosition: vec2f, state: ptr<function, u32>) {
@@ -232,21 +232,38 @@ fn PhotonSpectral_reset(photon: ptr<function, PhotonSpectral>, screenPosition: v
     (*photon).bounces = 0u;
     var tbounds: vec2f = max(intersectCube(fromPos, (*photon).direction), vec2f(0.0));
     (*photon).position = fromPos + tbounds.x * (*photon).direction;
-    for (var i: u32 = 0u; i < N_BINS; i++) {
+    for (var i: u32 = 0u; i < MAX_N_BINS; i++) {
         (*photon).transmittance[i] = 1.0;
     }
-    PhotonSpectral_set_wavelength(photon, random_uniform(state) * (MAX_WAVELENGTH - MIN_WAVELENGTH) + MIN_WAVELENGTH);
+
+    let n_bins = u32(spectrum_representation[0]);
+    let min_lam = spectrum_representation[1];
+    let max_lam = spectrum_representation[n_bins + 1];
+
+    PhotonSpectral_set_wavelength(photon, random_uniform(state) * (max_lam - min_lam) + min_lam);
 }
 
 fn PhotonSpectral_full_reset(photon: ptr<function, PhotonSpectral>, screenPosition: vec2f, state: ptr<function, u32>) {
     PhotonSpectral_reset(photon, screenPosition, state);
     (*photon).samples = 0u;
-    for (var i: u32 = 0u; i < N_BINS; i++){
+    for (var i: u32 = 0u; i < MAX_N_BINS; i++){
         (*photon).radiance[i] = 1.0;
     }
 }
 
 fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, wavelength: f32) {
     (*photon).wavelength = wavelength;
-    (*photon).bin = u32((wavelength - MIN_WAVELENGTH) / (MAX_WAVELENGTH - MIN_WAVELENGTH) * f32(N_BINS));
+
+    let n_bins = u32(spectrum_representation[0]);
+    let min_lam = spectrum_representation[1];
+    let max_lam = spectrum_representation[n_bins + 1];
+
+    (*photon).bin = n_bins - 1u;
+    for (var i: u32 = 1u; i < n_bins; i++) {
+        if wavelength < spectrum_representation[i + 1] {
+            (*photon).bin = i - 1u;
+        }
+    }
+
+    // (*photon).bin = u32((wavelength - min_lam) / (max_lam - min_lam) * f32(MAX_N_BINS));
 }

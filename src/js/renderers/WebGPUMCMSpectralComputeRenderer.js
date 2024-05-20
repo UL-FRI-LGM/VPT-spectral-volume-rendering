@@ -46,12 +46,22 @@ constructor(device, volume, camera, environment, options = {}) {
             min: 0,
         },
         {
+            name: 'spectrumRepresentation',
+            label: 'Spectrum representation',
+            type: 'spectrum-representation',
+            id: "spectrum-representation"
+        },
+        {
             name: 'transferFunction',
             label: 'Transfer function',
             type: 'transfer-function',
             value: new Uint8Array(256),
         },
     ]);
+
+    // Spectrum representation - n_bins; wavelength bin boundaries
+    this.spectrumRepresentationData = [3, 400, 500, 600, 700];
+
 
     this.addEventListener('change', e => {
         const { name, value } = e.detail;
@@ -79,11 +89,16 @@ constructor(device, volume, camera, environment, options = {}) {
         size: this._resolution * this._resolution * photonSize,
         usage: GPUBufferUsage.STORAGE
     });
-
     
+    this._spectrumRepresentationBuffer = device.createBuffer({
+        size: 256, // TODO: Calculate size min((n_bins + 1), 256)*4 
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, // TODO: Consider changing to UNIFORM (be aware of stride 16 requirement)
+        label: "Spectrum representation buffer"
+    });
+
     this._renderUniformBuffer = device.createBuffer({
         size: 96,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 
     });
     this._renderPipeline = device.createComputePipeline({
         label: "WebGPUMCMSpectralComputeRenderer render pipeline",
@@ -127,6 +142,7 @@ _resetFrame() {
     const device = this._device;
 
     // TODO: get model matrix from volume
+    // const modelMatrix = this._volumeTransform.globalMatrix; // tole ne dela
     const modelMatrix = mat4.fromTranslation(mat4.create(), [-0.5, -0.5, -0.5]);
     const viewMatrix = this._camera.transform.inverseGlobalMatrix;
     const projectionMatrix = this._camera.getComponent(PerspectiveCamera).projectionMatrix;
@@ -154,6 +170,10 @@ _resetFrame() {
             {
                 binding: 1,
                 resource: { buffer: this._photonBuffer }
+            },
+            {
+                binding: 2,
+                resource: { buffer: this._spectrumRepresentationBuffer }
             }
         ]
     });
@@ -194,6 +214,9 @@ _renderFrame() {
         this.steps                                  // uniforms.steps
     ]));
 
+    device.queue.writeBuffer(this._spectrumRepresentationBuffer, 0, 
+        new Float32Array(this.spectrumRepresentationData));
+
     const bindGroup = device.createBindGroup({
         layout: this._renderPipeline.getBindGroupLayout(0),
         entries: [ // TODO: Cleanup
@@ -232,6 +255,10 @@ _renderFrame() {
             {
                 binding: 8,
                 resource: this._renderBuffer.getAttachments()[0].texture.createView(),
+            },
+            {
+                binding: 9,
+                resource: { buffer: this._spectrumRepresentationBuffer }
             }
         ]
     });
