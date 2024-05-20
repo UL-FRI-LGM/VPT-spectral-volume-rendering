@@ -5,6 +5,7 @@ import { WebGPUEAMRenderer } from './WebGPUEAMRenderer.js';
 // import { WebGPUMCSRenderer } from './WebGPUMCSRenderer.js';
 import { WebGPUMCMRenderer } from './WebGPUMCMRenderer.js';
 import { WebGPUMCMComputeRenderer } from './WebGPUMCMComputeRenderer.js';
+import { WebGPUMCMSpectralComputeRenderer } from './WebGPUMCMSpectralComputeRenderer.js';
 // import { WebGPUDOSRenderer } from './WebGPUDOSRenderer.js';
 // import { WebGPUDepthRenderer } from './WebGPUDepthRenderer.js';
 
@@ -17,6 +18,7 @@ export function WebGPURendererFactory(which) {
         // case 'mcs': return WebGPUMCSRenderer;
         case 'mcm': return WebGPUMCMRenderer;
         case 'mcm-compute': return WebGPUMCMComputeRenderer;
+        case 'mcm-spectral-compute': return WebGPUMCMSpectralComputeRenderer;
         // case 'dos': return WebGPUDOSRenderer;
         // case 'depth': return WebGPUDepthRenderer;
 
