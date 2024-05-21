@@ -90,11 +90,22 @@ constructor(device, volume, camera, environment, options = {}) {
             this.setTransferFunction(this.transferFunction);
         }
 
+        const spectrumRepresentation = document.getElementById("spectrum-representation");
+        if (name === 'spectrumRepresentation') {
+            this.spectrumRepresentationData = spectrumRepresentation.get_bins();
+            this.n_bins = this.spectrumRepresentationData.length - 1; 
+            this.compute_spectral_coefficients();
+            console.log("x_coeff", this.x_coeff)
+            console.log("y_coeff", this.y_coeff)
+            console.log("z_coeff", this.z_coeff)
+        }
+
         if ([
             'extinction',
             'anisotropy',
             'bounces',
             'transferFunction',
+            'spectrumRepresentation'
         ].includes(name)) {
             this.reset();
         }
