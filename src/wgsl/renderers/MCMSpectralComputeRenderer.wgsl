@@ -132,15 +132,11 @@ fn compute_main(
             let envSample: f32 = sampleEnvironmentMap(p.direction, p.wavelength);
             let radiance: f32 = p.transmittance[p.bin] * envSample;
             p.samples++;
-            // p.radiance[p.bin] += (radiance - p.radiance[p.bin]) / f32(p.samples);
-            // p.radiance[p.bin] += radiance;
             PhotonSpectral_add_radiance(&p, radiance);
             PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption) {
             // Absorption
             p.samples++;
-            // p.radiance[p.bin] += (0.0 - p.radiance[p.bin]) / f32(p.samples);
-            // p.radiance[p.bin] += 0.0;
             PhotonSpectral_add_radiance(&p, 0.0);
             PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption + PScattering) {

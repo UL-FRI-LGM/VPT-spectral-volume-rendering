@@ -78,9 +78,6 @@ constructor(device, volume, camera, environment, options = {}) {
     this.n_bins = 12; this.spectrumRepresentationData = [400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650, 675, 700];
 
     this.compute_spectral_coefficients();
-    console.log("x_coeff", this.x_coeff)
-    console.log("y_coeff", this.y_coeff)
-    console.log("z_coeff", this.z_coeff)
 
 
     this.addEventListener('change', e => {
@@ -95,9 +92,6 @@ constructor(device, volume, camera, environment, options = {}) {
             this.spectrumRepresentationData = spectrumRepresentation.get_bins();
             this.n_bins = this.spectrumRepresentationData.length - 1; 
             this.compute_spectral_coefficients();
-            console.log("x_coeff", this.x_coeff)
-            console.log("y_coeff", this.y_coeff)
-            console.log("z_coeff", this.z_coeff)
         }
 
         if ([
