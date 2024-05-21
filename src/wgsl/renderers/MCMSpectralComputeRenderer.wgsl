@@ -45,7 +45,8 @@ struct Uniforms {
 
 fn sampleEnvironmentMap(d: vec3f, wavelength: f32) -> f32 {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
-    let color = textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0);
+    let gain = 2.7; // make the environment map brighter
+    let color = textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0) * gain;
     if (wavelength < 500.0) {
         return color.b;
     } else if (wavelength < 600.0) {
@@ -131,12 +132,16 @@ fn compute_main(
             let envSample: f32 = sampleEnvironmentMap(p.direction, p.wavelength);
             let radiance: f32 = p.transmittance[p.bin] * envSample;
             p.samples++;
-            p.radiance[p.bin] += (radiance - p.radiance[p.bin]) / f32(p.samples);
+            // p.radiance[p.bin] += (radiance - p.radiance[p.bin]) / f32(p.samples);
+            // p.radiance[p.bin] += radiance;
+            PhotonSpectral_add_radiance(&p, radiance);
             PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption) {
             // Absorption
             p.samples++;
-            p.radiance[p.bin] += (0.0 - p.radiance[p.bin]) / f32(p.samples);
+            // p.radiance[p.bin] += (0.0 - p.radiance[p.bin]) / f32(p.samples);
+            // p.radiance[p.bin] += 0.0;
+            PhotonSpectral_add_radiance(&p, 0.0);
             PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
@@ -208,7 +213,7 @@ fn compute_main(
 
 // #part /wgsl/mixins/PhotonSpectral
 
-const MAX_N_BINS = 10;
+const MAX_N_BINS = 12;
 
 struct PhotonSpectral {
     position: vec3f, 
@@ -262,8 +267,18 @@ fn PhotonSpectral_set_wavelength(photon: ptr<function, PhotonSpectral>, waveleng
             break;
         }
     }
+}
 
-    // (*photon).bin = u32((wavelength - min_lam) / (max_lam - min_lam) * f32(MAX_N_BINS));
+fn PhotonSpectral_add_radiance(photon: ptr<function, PhotonSpectral>, radiance: f32) {
+    let n_bins = u32(spectrum_representation[0] + 0.5);
+    for(var i: u32 = 0u; i < n_bins; i++) {
+        if (i == (*photon).bin) {
+            (*photon).radiance[i] += (radiance - (*photon).radiance[i]) / f32((*photon).samples);
+        }
+        else{
+            (*photon).radiance[i] += (0.0 - (*photon).radiance[i]) / f32((*photon).samples);
+        }
+    }
 }
 
 fn PhotonSpectral_radiance_to_xyz(photon: ptr<function, PhotonSpectral>) -> vec3f {

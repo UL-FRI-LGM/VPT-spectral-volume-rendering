@@ -72,10 +72,10 @@ constructor(device, volume, camera, environment, options = {}) {
     ]);
 
     // Spectrum representation - n_bins; wavelength bin boundaries
-    this.max_n_bins = 10; // must match PhotonSpectrum MAX_N_BINS
-    this.n_bins = 6;
-    // this.spectrumRepresentationData = [400, 500, 600, 700];
-    this.spectrumRepresentationData = [400, 450, 500, 550, 600, 650, 700];
+    this.max_n_bins = 12; // must match PhotonSpectrum MAX_N_BINS
+    // this.n_bins = 3;  this.spectrumRepresentationData = [400, 500, 600, 700];
+    // this.n_bins = 6; this.spectrumRepresentationData = [400, 450, 500, 550, 600, 650, 700];
+    this.n_bins = 12; this.spectrumRepresentationData = [400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650, 675, 700];
 
     this.compute_spectral_coefficients();
     console.log("x_coeff", this.x_coeff)
