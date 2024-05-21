@@ -43,7 +43,7 @@ struct Uniforms {
 #include <unprojectRand>
 #include <PhotonSpectral>
 
-fn sampleEnvironmentMap(d: vec3f, wavelength: f32) -> f32 {
+fn sample_environment_map(d: vec3f, wavelength: f32) -> f32 {
     let texCoord: vec2f = vec2f(atan2(d.x, -d.z), asin(-d.y) * 2.0) * INVPI * 0.5 + 0.5; // TODO: Why shouldn't y be negated here?
     let gain = 2.7; // make the environment map brighter
     let color = textureSampleLevel(uEnvironment, uEnvironmentSampler, texCoord, 0.0) * gain;
@@ -56,7 +56,13 @@ fn sampleEnvironmentMap(d: vec3f, wavelength: f32) -> f32 {
     }
 }
 
-fn sampleVolumeColor(position: vec3f, wavelength: f32) -> vec2f {
+fn sample_light(d: vec3f, wavelength: f32) -> f32 {
+    let light_dir = vec3f(1.0, 0.0, 0.0);
+
+    return max(dot(d.xyz, light_dir)*3.0, 0.0);
+}
+
+fn sample_volume_color(position: vec3f, wavelength: f32) -> vec2f {
     let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
     let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0); 
     if (wavelength < 500.0) {
@@ -113,7 +119,7 @@ fn compute_main(
         let dist: f32 = random_exponential(&state, uniforms.extinction);
         p.position += dist * p.direction;
 
-        let volumeSample: vec2f = sampleVolumeColor(p.position, p.wavelength);
+        let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
         let volume_alpha: f32 = volumeSample.y;
         let volume_value: f32 = volumeSample.x;
 
@@ -129,7 +135,8 @@ fn compute_main(
         let fortuneWheel: f32 = random_uniform(&state);
         if (any(p.position > vec3f(1.0)) || any(p.position < vec3f(0.0))) {
             // Out of bounds
-            let envSample: f32 = sampleEnvironmentMap(p.direction, p.wavelength);
+            // let envSample: f32 = sample_environment_map(p.direction, p.wavelength);
+            let envSample: f32 = sample_light(p.direction, p.wavelength);
             let radiance: f32 = p.transmittance[p.bin] * envSample;
             p.samples++;
             PhotonSpectral_add_radiance(&p, radiance);
@@ -152,6 +159,10 @@ fn compute_main(
 
     let radiance_rgb = PhotonSpectral_radiance_to_rgb(&p);
     textureStore(uRadiance, globalId.xy, vec4f(radiance_rgb, 1.0));
+
+    _ = uEnvironmentSampler;
+    _ = uEnvironment;
+
 }
 
 
