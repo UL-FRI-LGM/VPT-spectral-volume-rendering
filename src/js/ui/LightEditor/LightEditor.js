@@ -1,5 +1,4 @@
 import { DOMUtils } from '../../utils/DOMUtils.js';
-import { lambda_to_RGB } from '../../utils/Spectrum.js';
 
 
 const template = document.createElement('template');

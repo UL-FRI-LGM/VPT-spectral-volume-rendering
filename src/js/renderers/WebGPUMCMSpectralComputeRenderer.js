@@ -59,6 +59,12 @@ constructor(device, volume, camera, environment, options = {}) {
             id: "light-editor"
         },
         {
+            name: 'materialTransferFunction',
+            label: 'Material transfer function',
+            type: 'material-transfer-function',
+            id: "material-transfer-function"
+        },
+        {
             name: 'transferFunction',
             label: 'Transfer function',
             type: 'transfer-function',

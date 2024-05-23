@@ -1,0 +1,38 @@
+.material-palette {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  background-color: #eee;
+}
+
+.materials{
+	display: flex;
+}
+
+.material, .add{
+	width: 30px;
+	height: 30px;
+	cursor: pointer;
+	box-sizing: border-box;
+}
+
+.material{
+	background-color: limegreen;
+	border: 1px solid rgba(0,0,0,0.1);
+}
+
+.material.selected{
+	border: 3px solid rgba(0,0,0,0.4);
+}
+
+.add{
+	background-color: #555;
+	color: #fff;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-size: 25px;
+	cursor: pointer;
+}

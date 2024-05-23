@@ -32,6 +32,10 @@ export function XYZ_to_RGB(XYZ) {
 		B: rgb_linear.B <= 0.0031308 ? 12.92 * rgb_linear.B : 1.055 * Math.pow(rgb_linear.B, 1/2.4) - 0.055,
 	}
 
+	rgb.R = Math.min(1, Math.max(0, rgb.R));
+	rgb.G = Math.min(1, Math.max(0, rgb.G));
+	rgb.B = Math.min(1, Math.max(0, rgb.B));
+
 	return rgb;
 }
 
@@ -46,4 +50,24 @@ export function lambda_to_XYZ(lambda) {
 
 export function lambda_to_RGB(lambda) {
 	return XYZ_to_RGB(lambda_to_XYZ(lambda));
+}
+
+export function spectrum_to_XYZ(spectrum, min_wavelength, max_wavelength) {
+	let XYZ = { X: 0, Y: 0, Z: 0 };
+	for (let lambda = min_wavelength; lambda <= max_wavelength; lambda += CIE_SPECTRUM.step) {
+		const xyz = lambda_to_XYZ(lambda);
+		const i = Math.floor((lambda - min_wavelength) / (max_wavelength - min_wavelength) * (spectrum.length - 1));
+		const v = spectrum[i] / 256.0 * 5.0;
+		XYZ.X += xyz.X * v;
+		XYZ.Y += xyz.Y * v;
+		XYZ.Z += xyz.Z * v;
+	}
+	XYZ.X /= (max_wavelength - min_wavelength);
+	XYZ.Y /= (max_wavelength - min_wavelength);
+	XYZ.Z /= (max_wavelength - min_wavelength);
+	return XYZ;
+}
+
+export function spectrum_to_RGB(spectrum, min_wavelength, max_wavelength){
+	return XYZ_to_RGB(spectrum_to_XYZ(spectrum, min_wavelength, max_wavelength));
 }
