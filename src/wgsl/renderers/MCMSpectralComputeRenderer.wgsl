@@ -22,11 +22,13 @@ struct Uniforms {
 @group(0) @binding(3) var uTransferFunctionSampler: sampler;
 @group(0) @binding(4) var uEnvironment: texture_2d<f32>;
 @group(0) @binding(5) var uEnvironmentSampler: sampler;
+@group(0) @binding(6) var uLightSpectrum: texture_2d<f32>;
+@group(0) @binding(7) var uLightSpectrumSampler: sampler;
 
-@group(0) @binding(6) var<uniform> uniforms: Uniforms;
-@group(0) @binding(7) var<storage, read_write> uPhotons: array<PhotonSpectral>;
-@group(0) @binding(8) var uRadiance: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(9) var<storage, read> spectrum_representation: array<f32, 64>;
+@group(0) @binding(8) var<uniform> uniforms: Uniforms;
+@group(0) @binding(9) var<storage, read_write> uPhotons: array<PhotonSpectral>;
+@group(0) @binding(10) var uRadiance: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(11) var<storage, read> spectrum_representation: array<f32, 64>;
 
 
 #include <intersectCube>
@@ -119,16 +121,30 @@ fn compute_main(
         let dist: f32 = random_exponential(&state, uniforms.extinction);
         p.position += dist * p.direction;
 
-        let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
-        let volume_alebedo: f32 = volumeSample.x;
-        let volume_alpha: f32 = volumeSample.y; // true extinction
+        // let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
+        // let volume_alebedo: f32 = volumeSample.x;
+        // let volume_alpha: f32 = volumeSample.y; // true extinction
 
-        let PNull: f32 = 1.0 - volume_alpha;
+        // let PNull: f32 = 1.0 - volume_alpha;
+        // var PScattering: f32;
+        // if (p.bounces >= uniforms.maxBounces) {
+        //     PScattering = 0.0;
+        // } else {
+        //     PScattering = volume_alpha * volume_alebedo;
+        // }
+        // let PAbsorption: f32 = 1.0 - PNull - PScattering;
+
+        var PNull: f32;
         var PScattering: f32;
+        if p.wavelength < 550.0 {
+            PScattering = 1.0;
+            PNull = 0.0;
+        } else if p.wavelength < 700{
+            PScattering = 0;
+            PNull = 1.0;
+        }
         if (p.bounces >= uniforms.maxBounces) {
             PScattering = 0.0;
-        } else {
-            PScattering = volume_alpha * volume_alebedo;
         }
         let PAbsorption: f32 = 1.0 - PNull - PScattering;
 
@@ -161,9 +177,19 @@ fn compute_main(
     let radiance_rgb = PhotonSpectral_radiance_to_rgb(&p);
     textureStore(uRadiance, globalId.xy, vec4f(radiance_rgb, 1.0));
 
+    if globalId.x < 10 {
+        let v = textureSampleLevel(uLightSpectrum, uLightSpectrumSampler, vec2f(f32(globalId.y) / 512.0 , 0.5), 0.0).r;
+        textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
+    }
+
     _ = uEnvironmentSampler;
     _ = uEnvironment;
-
+    _ = uVolume;
+    _ = uVolumeSampler;
+    _ = uTransferFunction;
+    _ = uTransferFunctionSampler;
+    _ = uLightSpectrum;
+    _ = uLightSpectrumSampler;
 }
 
 

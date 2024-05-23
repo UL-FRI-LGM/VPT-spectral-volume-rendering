@@ -2,6 +2,7 @@ import { mat4 } from '../../lib/gl-matrix-module.js';
 
 import { WebGPU } from '../WebGPU.js';
 import { WebGPUAbstractComputeRenderer } from './WebGPUAbstractComputeRenderer.js';
+import { CIE_SPECTRUM } from '../utils/Spectrum.js';
 
 import { PerspectiveCamera } from '../PerspectiveCamera.js';
 
@@ -9,18 +10,6 @@ const [ SHADERS, MIXINS ] = await Promise.all([
     'shaders-wgsl.json',
     'mixins-wgsl.json',
 ].map(url => fetch(url).then(response => response.json())));
-
-// TODO: Move to a separate file
-// XYZ spectral values (390nm - 830nm in 5nm steps)
-const CIE_SPECTRUM = {
-    first_wavelenght: 390, // nm
-    step: 5, // nm 
-    length: 89,
-    X: [0.003769647,0.009382967,0.02214302,0.04742986,0.08953803,0.1446214,0.2035729,0.2488523,0.2918246,0.3227087,0.3482554,0.3418483,0.3224637,0.2826646,0.2485254,0.2219781,0.1806905,0.129192,0.08182895,0.04600865,0.02083981,0.007097731,0.002461588,0.003649178,0.01556989,0.04315171,0.07962917,0.1268468,0.1818026,0.2405015,0.3098117,0.3804244,0.4494206,0.5280233,0.6133784,0.7016774,0.796775,0.8853376,0.9638388,1.051011,1.109767,1.14362,1.151033,1.134757,1.083928,1.007344,0.9142877,0.8135565,0.6924717,0.575541,0.4731224,0.3844986,0.2997374,0.2277792,0.1707914,0.1263808,0.09224597,0.0663996,0.04710606,0.03292138,0.02262306,0.01575417,0.01096778,0.00760875,0.005214608,0.003569452,0.002464821,0.001703876,0.001186238,0.0008269535,0.0005758303,0.0004058303,0.0002856577,0.0002021853,0.000143827,0.0001024685,7.347551e-05,5.25987e-05,3.806114e-05,2.758222e-05,2.004122e-05,1.458792e-05,1.068141e-05,7.857521e-06,5.768284e-06,4.259166e-06,3.167765e-06,2.358723e-06,1.762465e-06],
-    Y: [0.0004146161,0.001059646,0.002452194,0.004971717,0.00907986,0.01429377,0.02027369,0.02612106,0.03319038,0.0415794,0.05033657,0.05743393,0.06472352,0.07238339,0.08514816,0.1060145,0.1298957,0.1535066,0.1788048,0.2064828,0.237916,0.285068,0.3483536,0.4277595,0.5204972,0.6206256,0.718089,0.7946448,0.8575799,0.9071347,0.9544675,0.9814106,0.9890228,0.9994608,0.9967737,0.9902549,0.9732611,0.9424569,0.8963613,0.8587203,0.8115868,0.7544785,0.6918553,0.6270066,0.5583746,0.489595,0.4229897,0.3609245,0.2980865,0.2416902,0.1943124,0.1547397,0.119312,0.08979594,0.06671045,0.04899699,0.03559982,0.02554223,0.01807939,0.01261573,0.008661284,0.006027677,0.004195941,0.002910864,0.001995557,0.001367022,0.0009447269,0.000653705,0.000455597,0.0003179738,0.0002217445,0.0001565566,0.0001103928,7.827442e-05,5.578862e-05,3.981884e-05,2.860175e-05,2.051259e-05,1.487243e-05,1.080001e-05,7.86392e-06,5.736935e-06,4.211597e-06,3.106561e-06,2.286786e-06,1.693147e-06,1.262556e-06,9.422514e-07,7.05386e-07],
-    Z: [0.0184726,0.04609784,0.109609,0.2369246,0.4508369,0.7378822,1.051821,1.305008,1.552826,1.74828,1.917479,1.918437,1.848545,1.664439,1.522157,1.42844,1.25061,0.9991789,0.7552379,0.5617313,0.4099313,0.3105939,0.2376753,0.1720018,0.1176796,0.08283548,0.05650407,0.03751912,0.02438164,0.01566174,0.00984647,0.006131421,0.003790291,0.002327186,0.001432128,0.0008822531,0.0005452416,0.0003386739,0.0002117772,0.0001335031,8.494468e-05,5.460706e-05,3.549661e-05,2.334738e-05,1.554631e-05,1.048387e-05,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-}
-
 
 export class WebGPUMCMSpectralComputeRenderer extends WebGPUAbstractComputeRenderer {
 
@@ -64,6 +53,12 @@ constructor(device, volume, camera, environment, options = {}) {
             id: "spectrum-representation"
         },
         {
+            name: 'lightEditor',
+            label: 'Light editor',
+            type: 'light-editor',
+            id: "light-editor"
+        },
+        {
             name: 'transferFunction',
             label: 'Transfer function',
             type: 'transfer-function',
@@ -76,8 +71,8 @@ constructor(device, volume, camera, environment, options = {}) {
     // this.n_bins = 3;  this.spectrumRepresentationData = [400, 500, 600, 700];
     // this.n_bins = 6; this.spectrumRepresentationData = [400, 450, 500, 550, 600, 650, 700];
     this.n_bins = 12; this.spectrumRepresentationData = [400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650, 675, 700];
-
     this.compute_spectral_coefficients();
+
 
 
     this.addEventListener('change', e => {
@@ -87,8 +82,15 @@ constructor(device, volume, camera, environment, options = {}) {
             this.setTransferFunction(this.transferFunction);
         }
 
-        const spectrumRepresentation = document.getElementById("spectrum-representation");
+
+        if (name === 'lightEditor') {
+            const lightEditor = document.getElementById("light-editor");
+            this.light_spectrum_power_distribution = lightEditor.spectrum_power_distribution;
+            this.light_direction = lightEditor.direction;
+        }
+
         if (name === 'spectrumRepresentation') {
+            const spectrumRepresentation = document.getElementById("spectrum-representation");
             this.spectrumRepresentationData = spectrumRepresentation.get_bins();
             this.n_bins = this.spectrumRepresentationData.length - 1; 
             this.compute_spectral_coefficients();
@@ -118,6 +120,18 @@ constructor(device, volume, camera, environment, options = {}) {
         size: 256, // TODO: Calculate size min((n_bins + 1), 256)*4 
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, // TODO: Consider changing to UNIFORM (be aware of stride 16 requirement)
         label: "Spectrum representation buffer"
+    });
+
+    // create a texture
+    this._lightSpectrumTexture = device.createTexture({
+        size: {width: 256, height: 1},
+        format: 'r8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+
+    this._lightSpectrumTextureSampler = device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
     });
 
     this._renderUniformBuffer = device.createBuffer({
@@ -225,6 +239,14 @@ _renderFrame() {
     mat4.multiply(matrix, projectionMatrix, matrix);
     mat4.invert(matrix, matrix);
 
+    // write to _lightSpectrumTexture
+    device.queue.writeTexture(
+        { texture: this._lightSpectrumTexture }, 
+        this.light_spectrum_power_distribution || new Uint8Array(256).fill(100),
+        {}, 
+        { width: 256, height: 1 }
+    );
+
     device.queue.writeBuffer(this._renderUniformBuffer, 0, matrix);
     device.queue.writeBuffer(this._renderUniformBuffer, 64, new Float32Array([
         1 / this._resolution, 1 / this._resolution, // uniforms.inverseResolution
@@ -240,6 +262,7 @@ _renderFrame() {
 
     device.queue.writeBuffer(this._spectrumRepresentationBuffer, 0, 
         new Float32Array([this.n_bins, ...this.spectrumRepresentationData, ...this.x_coeff, ...this.y_coeff, ...this.z_coeff]));
+
 
     const bindGroup = device.createBindGroup({
         layout: this._renderPipeline.getBindGroupLayout(0),
@@ -270,18 +293,26 @@ _renderFrame() {
             },
             {
                 binding: 6,
-                resource: { buffer: this._renderUniformBuffer }
+                resource: this._lightSpectrumTexture.createView()
             },
             {
                 binding: 7,
-                resource: { buffer: this._photonBuffer }
+                resource: this._lightSpectrumTextureSampler
             },
             {
                 binding: 8,
-                resource: this._renderBuffer.getAttachments()[0].texture.createView(),
+                resource: { buffer: this._renderUniformBuffer }
             },
             {
                 binding: 9,
+                resource: { buffer: this._photonBuffer }
+            },
+            {
+                binding: 10,
+                resource: this._renderBuffer.getAttachments()[0].texture.createView(),
+            },
+            {
+                binding: 11,
                 resource: { buffer: this._spectrumRepresentationBuffer }
             }
         ]

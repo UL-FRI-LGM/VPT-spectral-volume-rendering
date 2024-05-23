@@ -11,4 +11,5 @@ export * from './StatusBar/StatusBar.js';
 export * from './Tabs/Tabs.js';
 export * from './SpectrumRepresentation/SpectrumRepresentation.js';
 export * from './TransferFunction/TransferFunction.js';
+export * from './LightEditor/LightEditor.js';
 export * from './VectorSpinner/VectorSpinner.js';
