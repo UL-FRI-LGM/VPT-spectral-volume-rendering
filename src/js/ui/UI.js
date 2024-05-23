@@ -12,4 +12,6 @@ export * from './Tabs/Tabs.js';
 export * from './SpectrumRepresentation/SpectrumRepresentation.js';
 export * from './TransferFunction/TransferFunction.js';
 export * from './LightEditor/LightEditor.js';
+export * from './SpectrumEditor/SpectrumEditor.js';
 export * from './VectorSpinner/VectorSpinner.js';
+export * from './MaterialEditor/MaterialEditor.js';
