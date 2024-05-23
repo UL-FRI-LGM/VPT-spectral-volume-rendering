@@ -17,7 +17,7 @@ export class LightEditor extends HTMLElement {
 		this.ctx = this.binds.canvas.getContext('2d');
 
 		this.mouse_down = false;
-		this.spectrum_power_distribution = new Uint8Array(256).fill(255);
+		this.spectrum_power_distribution = new Uint8Array(256).fill(100);
 		this.last_x = undefined;
 		this.direction = [1, 0, 0];
 

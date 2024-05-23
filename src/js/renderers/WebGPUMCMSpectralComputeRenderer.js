@@ -73,6 +73,9 @@ constructor(device, volume, camera, environment, options = {}) {
     this.n_bins = 12; this.spectrumRepresentationData = [400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650, 675, 700];
     this.compute_spectral_coefficients();
 
+    this.light_direction = [1, 0, 0];
+    this.light_spectrum_power_distribution = new Uint8Array(256).fill(100);
+
 
 
     this.addEventListener('change', e => {
@@ -101,7 +104,8 @@ constructor(device, volume, camera, environment, options = {}) {
             'anisotropy',
             'bounces',
             'transferFunction',
-            'spectrumRepresentation'
+            'spectrumRepresentation',
+            'lightEditor'
         ].includes(name)) {
             this.reset();
         }
@@ -135,7 +139,7 @@ constructor(device, volume, camera, environment, options = {}) {
     });
 
     this._renderUniformBuffer = device.createBuffer({
-        size: 96,
+        size: 112,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 
     });
     this._renderPipeline = device.createComputePipeline({
@@ -258,6 +262,9 @@ _renderFrame() {
     device.queue.writeBuffer(this._renderUniformBuffer, 88, new Uint32Array([
         this.bounces,                               // uniforms.bounces
         this.steps                                  // uniforms.steps
+    ]));
+    device.queue.writeBuffer(this._renderUniformBuffer, 96, new Float32Array([  
+        ...this.light_direction                     // uniforms.light_direction
     ]));
 
     device.queue.writeBuffer(this._spectrumRepresentationBuffer, 0, 

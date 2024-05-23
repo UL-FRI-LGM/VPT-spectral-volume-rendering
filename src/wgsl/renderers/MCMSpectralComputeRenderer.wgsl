@@ -14,6 +14,7 @@ struct Uniforms {
     anisotropy: f32,
     maxBounces: u32,
     steps: u32,
+    light_direction: vec3f
 };
 
 @group(0) @binding(0) var uVolume: texture_3d<f32>;
@@ -59,9 +60,16 @@ fn sample_environment_map(d: vec3f, wavelength: f32) -> f32 {
 }
 
 fn sample_light(d: vec3f, wavelength: f32) -> f32 {
-    let light_dir = vec3f(1.0, 0.0, 0.0);
 
-    return max(dot(d.xyz, light_dir)*3.0, 0.0);
+    let t = (wavelength - 400.0) / (700.0 - 400.0);
+    let intensity = f32(textureSampleLevel(uLightSpectrum, uLightSpectrumSampler, vec2f(t, 0.5), 0.0).r) * 5.0;
+    if length(uniforms.light_direction) < EPS {
+        return intensity;
+    }
+    else{
+        let light_dir = normalize(uniforms.light_direction);
+        return max(dot(d.xyz, light_dir)*intensity, 0.0);
+    }
 }
 
 fn sample_volume_color(position: vec3f, wavelength: f32) -> vec2f {
@@ -121,32 +129,32 @@ fn compute_main(
         let dist: f32 = random_exponential(&state, uniforms.extinction);
         p.position += dist * p.direction;
 
-        // let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
-        // let volume_alebedo: f32 = volumeSample.x;
-        // let volume_alpha: f32 = volumeSample.y; // true extinction
+        let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
+        let volume_alebedo: f32 = volumeSample.x;
+        let volume_alpha: f32 = volumeSample.y; // true extinction
 
-        // let PNull: f32 = 1.0 - volume_alpha;
-        // var PScattering: f32;
-        // if (p.bounces >= uniforms.maxBounces) {
-        //     PScattering = 0.0;
-        // } else {
-        //     PScattering = volume_alpha * volume_alebedo;
-        // }
-        // let PAbsorption: f32 = 1.0 - PNull - PScattering;
-
-        var PNull: f32;
+        let PNull: f32 = 1.0 - volume_alpha;
         var PScattering: f32;
-        if p.wavelength < 550.0 {
-            PScattering = 1.0;
-            PNull = 0.0;
-        } else if p.wavelength < 700{
-            PScattering = 0;
-            PNull = 1.0;
-        }
         if (p.bounces >= uniforms.maxBounces) {
             PScattering = 0.0;
+        } else {
+            PScattering = volume_alpha * volume_alebedo;
         }
         let PAbsorption: f32 = 1.0 - PNull - PScattering;
+
+        // var PNull: f32;
+        // var PScattering: f32;
+        // if p.wavelength < 550.0 {
+        //     PScattering = 1.0;
+        //     PNull = 0.0;
+        // } else if p.wavelength < 700{
+        //     PScattering = 0;
+        //     PNull = 1.0;
+        // }
+        // if (p.bounces >= uniforms.maxBounces) {
+        //     PScattering = 0.0;
+        // }
+        // let PAbsorption: f32 = 1.0 - PNull - PScattering;
 
         let fortuneWheel: f32 = random_uniform(&state);
         if (any(p.position > vec3f(1.0)) || any(p.position < vec3f(0.0))) {
@@ -177,11 +185,13 @@ fn compute_main(
     let radiance_rgb = PhotonSpectral_radiance_to_rgb(&p);
     textureStore(uRadiance, globalId.xy, vec4f(radiance_rgb, 1.0));
 
-    if globalId.x < 10 {
-        let v = textureSampleLevel(uLightSpectrum, uLightSpectrumSampler, vec2f(f32(globalId.y) / 512.0 , 0.5), 0.0).r;
-        textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
-    }
-
+    // debugging light spectrum texture
+    // if globalId.x < 10 {
+    //     let v = textureSampleLevel(uLightSpectrum, uLightSpectrumSampler, vec2f(f32(globalId.y) / 512.0 , 0.5), 0.0).r;
+    //     textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
+    // }
+    
+    // Phony assignments to avoid unused variable errors
     _ = uEnvironmentSampler;
     _ = uEnvironment;
     _ = uVolume;
