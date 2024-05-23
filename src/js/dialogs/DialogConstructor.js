@@ -44,7 +44,7 @@ static constructProperty(property) {
         case 'checkbox': return `<ui-checkbox bind="${property.name}" ${property.value ? "checked" : ""}></ui-checkbox>`;
         case 'color-chooser': return `<ui-color-chooser bind="${property.name}" value="${property.value}"></ui-color-chooser>`;
         case 'transfer-function': return `<ui-transfer-function bind="${property.name}"></ui-transfer-function>`;
-        case 'material-transfer-function': return `<ui-material-transfer-function bind="${property.name}"></ui-material-transfer-function>`;
+        case 'material-transfer-function': return `<ui-material-transfer-function bind="${property.name}" id="${property.id}"></ui-material-transfer-function>`;
         case 'spectrum-representation': return `<ui-spectrum-representation bind="${property.name}" id="${property.id}"></ui-spectrum-representation>`;
         case 'light-editor': return `<ui-light-editor bind="${property.name}" id="${property.id}"></ui-light-editor>`;
         case 'material-editor': return `<ui-material-editor bind="${property.name}" id="${property.id}"></ui-material-editor>`;

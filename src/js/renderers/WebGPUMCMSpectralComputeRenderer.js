@@ -64,12 +64,12 @@ constructor(device, volume, camera, environment, options = {}) {
             type: 'material-transfer-function',
             id: "material-transfer-function"
         },
-        {
-            name: 'transferFunction',
-            label: 'Transfer function',
-            type: 'transfer-function',
-            value: new Uint8Array(256),
-        },
+        // {
+        //     name: 'transferFunction',
+        //     label: 'Transfer function',
+        //     type: 'transfer-function',
+        //     value: new Uint8Array(256),
+        // },
     ]);
 
     // Spectrum representation - n_bins; wavelength bin boundaries
@@ -81,6 +81,8 @@ constructor(device, volume, camera, environment, options = {}) {
 
     this.light_direction = [1, 0, 0];
     this.light_spectrum_power_distribution = new Uint8Array(256).fill(100);
+
+    this.material_transfer_function = new Uint8Array(256*256*4).fill(0);
 
 
 
@@ -105,11 +107,17 @@ constructor(device, volume, camera, environment, options = {}) {
             this.compute_spectral_coefficients();
         }
 
+        if (name === 'materialTransferFunction') {
+            console.log("Material transfer function changed");
+            const materialTransferFunction = document.getElementById("material-transfer-function");
+            this.material_transfer_function = materialTransferFunction.value;
+        }
+
         if ([
             'extinction',
             'anisotropy',
             'bounces',
-            'transferFunction',
+            'materialTransferFunction',
             'spectrumRepresentation',
             'lightEditor'
         ].includes(name)) {
@@ -132,7 +140,7 @@ constructor(device, volume, camera, environment, options = {}) {
         label: "Spectrum representation buffer"
     });
 
-    // create a texture
+    // light spectrum texture
     this._lightSpectrumTexture = device.createTexture({
         size: {width: 256, height: 1},
         format: 'r8unorm',
@@ -142,6 +150,22 @@ constructor(device, volume, camera, environment, options = {}) {
     this._lightSpectrumTextureSampler = device.createSampler({
         magFilter: 'linear',
         minFilter: 'linear',
+        addressModeU: 'clamp-to-edge',
+        addressModeV: 'clamp-to-edge',
+    });
+
+    // transfer function texture
+    this._materialTransferFunctionTexture = device.createTexture({
+        size: {width: 256, height: 256},
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+
+    this._materialTransferFunctionSampler = device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+        addressModeU: 'clamp-to-edge',
+        addressModeV: 'clamp-to-edge',
     });
 
     this._renderUniformBuffer = device.createBuffer({
@@ -257,6 +281,17 @@ _renderFrame() {
         { width: 256, height: 1 }
     );
 
+    // write to _materialTransferFunctionTexture
+    const materialTransferFunction = document.getElementById("material-transfer-function");
+    if (materialTransferFunction){
+        device.queue.writeTexture(
+            { texture: this._materialTransferFunctionTexture },
+            materialTransferFunction.value,
+            { bytesPerRow: 256*4 },
+            { width: 256, height: 256 }
+        );
+    }
+
     device.queue.writeBuffer(this._renderUniformBuffer, 0, matrix);
     device.queue.writeBuffer(this._renderUniformBuffer, 64, new Float32Array([
         1 / this._resolution, 1 / this._resolution, // uniforms.inverseResolution
@@ -290,11 +325,11 @@ _renderFrame() {
             },
             {
                 binding: 2,
-                resource: this._transferFunction.createView()
+                resource: this._materialTransferFunctionTexture.createView()
             },
             {
                 binding: 3,
-                resource: this._transferFunctionSampler
+                resource: this._materialTransferFunctionSampler
             },
             {
                 binding: 4,

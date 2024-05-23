@@ -36,3 +36,12 @@
 	font-size: 25px;
 	cursor: pointer;
 }
+
+.container{
+	padding: 10px;
+}
+
+.container canvas{
+	border: 1px solid #ddd;
+	background: url('../../../images/alpha-checkerboard.png') repeat;
+}

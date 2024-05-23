@@ -73,15 +73,10 @@ fn sample_light(d: vec3f, wavelength: f32) -> f32 {
 }
 
 fn sample_volume_color(position: vec3f, wavelength: f32) -> vec2f {
-    let volumeSample: vec2f = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).rg;
-    let transferSample: vec4f = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, volumeSample, 0.0); 
-    if (wavelength < 500.0) {
-        return transferSample.ba;
-    } else if (wavelength < 600.0) {
-        return transferSample.ga;
-    } else {
-        return transferSample.ra;
-    }
+    let d = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).r;
+    let t = (wavelength - 400.0) / (700.0 - 400.0);
+    let sample = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, vec2f(t, d), 0.0); 
+    return sample.rg;
 }
 
 fn sampleHenyeyGreensteinAngleCosine(state: ptr<function, u32>, g: f32) -> f32 {
@@ -190,6 +185,11 @@ fn compute_main(
     //     let v = textureSampleLevel(uLightSpectrum, uLightSpectrumSampler, vec2f(f32(globalId.y) / 512.0 , 0.5), 0.0).r;
     //     textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
     // }
+
+    // debugging transfer function texture
+    // let pos = vec2f(globalId.xy) / 512.0;
+    // let v = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, pos, 0.0).r;
+    // textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
     
     // Phony assignments to avoid unused variable errors
     _ = uEnvironmentSampler;
