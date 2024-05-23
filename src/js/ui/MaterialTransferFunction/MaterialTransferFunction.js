@@ -13,7 +13,7 @@ export class MaterialTransferFunction extends HTMLElement {
 		this.shadow.appendChild(template.content.cloneNode(true));
 		this.binds = DOMUtils.bind(this.shadow);
 		
-		this.binds.add_button.onclick = e => this.add_material();
+		this.binds.add_button.onclick = e => this.on_add_material();
 		this.binds.remove_button.onclick = e => this.remove_material(this.selected_material_id);
 
 		this.selected_material_id;
@@ -36,14 +36,24 @@ export class MaterialTransferFunction extends HTMLElement {
 		return max_id + 1;
 	}
 
+	on_add_material(){
+		console.log('add material');
+		let material = this.add_material();
+		this.binds.editor.albedo = material.albedo.slice();
+		this.binds.editor.alpha = material.alpha.slice();
+		this.binds.editor.anisotropy = material.anisotropy.slice();
+		this.on_editor_update();
+	}
+
 	add_material(){
 		const id = this.get_new_id();
-		this.materials.push({
+		const material = {
 			id: id,
 			albedo: new Uint8Array(256).fill(127),
 			alpha: new Uint8Array(256).fill(127),
 			anisotropy: new Uint8Array(256).fill(127),
-		});
+		};
+		this.materials.push(material);
 
 		let el = document.createElement('div');
 		el.classList.add('material');
@@ -55,6 +65,7 @@ export class MaterialTransferFunction extends HTMLElement {
 		this.selected_material_id = id;
 
 		this.update_selected_material();
+		return material;
 	}
 
 	
@@ -66,7 +77,11 @@ export class MaterialTransferFunction extends HTMLElement {
 		this.materials = this.materials.filter(material => material.id !== id);
 		this.binds.materials.removeChild(this.shadow.getElementById(`material_${id}`));
 
-		this.selected_material_id = this.materials[0].id;
+		let material = this.materials[0];
+		this.selected_material_id = material.id;
+		this.binds.editor.albedo = material.albedo.slice();
+		this.binds.editor.alpha = material.alpha.slice();
+		this.binds.editor.anisotropy = material.anisotropy.slice();
 		this.update_selected_material();
 	}
 
@@ -93,12 +108,6 @@ export class MaterialTransferFunction extends HTMLElement {
 	}
 
 	on_editor_update(){
-
-		// update the icon color
-		let rgb = spectrum_to_RGB(this.binds.editor.albedo, 400, 700);
-		let selected_material_icon = this.shadow.getElementById(`material_${this.selected_material_id}`);
-		selected_material_icon.style.backgroundColor = `rgb(${Math.floor(rgb.R*256)}, ${Math.floor(rgb.G*256)}, ${Math.floor(rgb.B*256)})`;
-
 		// update the material
 		let material = this.materials.find(material => material.id === this.selected_material_id);
 		if(!material){
@@ -108,6 +117,13 @@ export class MaterialTransferFunction extends HTMLElement {
 		material.albedo = this.binds.editor.albedo.slice();
 		material.alpha = this.binds.editor.alpha.slice();
 		material.anisotropy = this.binds.editor.anisotropy.slice();
+
+		// update the icon color
+		let rgb = spectrum_to_RGB(material.albedo, 400, 700);
+		let selected_material_icon = this.shadow.getElementById(`material_${this.selected_material_id}`);
+		selected_material_icon.style.backgroundColor = `rgb(${Math.floor(rgb.R*256)}, ${Math.floor(rgb.G*256)}, ${Math.floor(rgb.B*256)})`;
+
+
 		
 	}
 }

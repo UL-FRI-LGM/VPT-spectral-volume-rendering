@@ -68,11 +68,11 @@ export class SpectrumEditor extends HTMLElement {
 	}
 
 	get value(){
-		return this._value;
+		return this._value.slice();
 	}
 
 	set value(value){
-		this._value = value;
+		this._value.set(value);
 		this.render();
 	}
 }
