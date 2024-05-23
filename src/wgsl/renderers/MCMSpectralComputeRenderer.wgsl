@@ -120,15 +120,15 @@ fn compute_main(
         p.position += dist * p.direction;
 
         let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
-        let volume_alpha: f32 = volumeSample.y;
-        let volume_value: f32 = volumeSample.x;
+        let volume_alebedo: f32 = volumeSample.x;
+        let volume_alpha: f32 = volumeSample.y; // true extinction
 
         let PNull: f32 = 1.0 - volume_alpha;
         var PScattering: f32;
         if (p.bounces >= uniforms.maxBounces) {
             PScattering = 0.0;
         } else {
-            PScattering = volume_alpha * volume_value;
+            PScattering = volume_alpha * volume_alebedo;
         }
         let PAbsorption: f32 = 1.0 - PNull - PScattering;
 
@@ -136,8 +136,9 @@ fn compute_main(
         if (any(p.position > vec3f(1.0)) || any(p.position < vec3f(0.0))) {
             // Out of bounds
             // let envSample: f32 = sample_environment_map(p.direction, p.wavelength);
-            let envSample: f32 = sample_light(p.direction, p.wavelength);
-            let radiance: f32 = p.transmittance[p.bin] * envSample;
+            // let envSample: f32 = sample_light(p.direction, p.wavelength);
+            // let radiance: f32 = p.transmittance[p.bin] * envSample;
+            let radiance: f32 = sample_light(p.direction, p.wavelength); // transmitance is not needed as we are dealing with only one wavelength at a time
             p.samples++;
             PhotonSpectral_add_radiance(&p, radiance);
             PhotonSpectral_reset(&p, screenPosition, &state);
@@ -148,7 +149,7 @@ fn compute_main(
             PhotonSpectral_reset(&p, screenPosition, &state);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
-            p.transmittance[p.bin] *= volume_value;
+            // p.transmittance[p.bin] *= volume_alebedo;
             p.direction = sampleHenyeyGreenstein(&state, uniforms.anisotropy, p.direction);
             p.bounces++;
         } else {
