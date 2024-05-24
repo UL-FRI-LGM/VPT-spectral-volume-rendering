@@ -72,11 +72,11 @@ fn sample_light(d: vec3f, wavelength: f32) -> f32 {
     }
 }
 
-fn sample_volume_color(position: vec3f, wavelength: f32) -> vec2f {
+fn sample_volume_color(position: vec3f, wavelength: f32) -> vec3f {
     let d = textureSampleLevel(uVolume, uVolumeSampler, position, 0.0).r;
     let t = (wavelength - 400.0) / (700.0 - 400.0);
     let sample = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, vec2f(t, d), 0.0); 
-    return sample.rg;
+    return sample.rgb;
 }
 
 fn sampleHenyeyGreensteinAngleCosine(state: ptr<function, u32>, g: f32) -> f32 {
@@ -124,9 +124,10 @@ fn compute_main(
         let dist: f32 = random_exponential(&state, uniforms.extinction);
         p.position += dist * p.direction;
 
-        let volumeSample: vec2f = sample_volume_color(p.position, p.wavelength);
+        let volumeSample = sample_volume_color(p.position, p.wavelength);
         let volume_alebedo: f32 = volumeSample.x;
         let volume_alpha: f32 = volumeSample.y; // true extinction
+        let volume_anisotropy: f32 = volumeSample.z * 2.0 - 1.0; 
 
         let PNull: f32 = 1.0 - volume_alpha;
         var PScattering: f32;
@@ -169,7 +170,7 @@ fn compute_main(
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // Scattering
             // p.transmittance[p.bin] *= volume_alebedo;
-            p.direction = sampleHenyeyGreenstein(&state, uniforms.anisotropy, p.direction);
+            p.direction = sampleHenyeyGreenstein(&state, volume_anisotropy, p.direction);
             p.bounces++;
         } else {
             // Null collision
