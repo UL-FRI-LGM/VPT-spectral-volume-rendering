@@ -45,3 +45,7 @@
 	border: 1px solid #ddd;
 	background: url('../../../images/alpha-checkerboard.png') repeat;
 }
+
+p{
+	padding: 0 10px 0;
+}

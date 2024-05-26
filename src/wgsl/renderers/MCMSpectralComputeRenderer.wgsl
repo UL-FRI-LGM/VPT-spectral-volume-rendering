@@ -138,20 +138,6 @@ fn compute_main(
         }
         let PAbsorption: f32 = 1.0 - PNull - PScattering;
 
-        // var PNull: f32;
-        // var PScattering: f32;
-        // if p.wavelength < 550.0 {
-        //     PScattering = 1.0;
-        //     PNull = 0.0;
-        // } else if p.wavelength < 700{
-        //     PScattering = 0;
-        //     PNull = 1.0;
-        // }
-        // if (p.bounces >= uniforms.maxBounces) {
-        //     PScattering = 0.0;
-        // }
-        // let PAbsorption: f32 = 1.0 - PNull - PScattering;
-
         let fortuneWheel: f32 = random_uniform(&state);
         if (any(p.position > vec3f(1.0)) || any(p.position < vec3f(0.0))) {
             // Out of bounds
@@ -180,17 +166,6 @@ fn compute_main(
 
     let radiance_rgb = PhotonSpectral_radiance_to_rgb(&p);
     textureStore(uRadiance, globalId.xy, vec4f(radiance_rgb, 1.0));
-
-    // debugging light spectrum texture
-    // if globalId.x < 10 {
-    //     let v = textureSampleLevel(uLightSpectrum, uLightSpectrumSampler, vec2f(f32(globalId.y) / 512.0 , 0.5), 0.0).r;
-    //     textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
-    // }
-
-    // debugging transfer function texture
-    // let pos = vec2f(globalId.xy) / 512.0;
-    // let v = textureSampleLevel(uTransferFunction, uTransferFunctionSampler, pos, 0.0).r;
-    // textureStore(uRadiance, globalId.xy, vec4f(v, v, v, 1.0));
     
     // Phony assignments to avoid unused variable errors
     _ = uEnvironmentSampler;
